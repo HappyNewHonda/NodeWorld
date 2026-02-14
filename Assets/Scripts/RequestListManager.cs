@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Data.Master;
+using Mono.Cecil.Cil;
 using UnityEngine;
 
 /// <summary>
@@ -16,6 +17,13 @@ public class RequestListManager : MonoBehaviour
 
 	private List<RequestItemView> requestItems = new List<RequestItemView>();
 
+	/// <summary>
+	/// 更新処理
+	/// </summary>
+	private void Update()
+	{
+		UpdateRequestProgress();
+	}
 	/// <summary>
 	/// 指定したチャプター・セクションの依頼を受け取る（初回のみ）
 	/// </summary>
@@ -182,20 +190,50 @@ public class RequestListManager : MonoBehaviour
 	/// <summary>
 	/// 依頼の進捗を更新
 	/// </summary>
-	public void UpdateRequestProgress(int chapter, int section, string title, int progress)
+	public void UpdateRequestProgress()
 	{
-		var requestProgress = UserData.Instance.RequestProgress.GetOrCreateRequest(chapter, section, title, 0);
-		requestProgress.currentProgress = progress;
-
-		// 達成済みかチェック
-		if (requestProgress.currentProgress >= requestProgress.targetProgress && requestProgress.state == RequestState.InProgress)
+		// 各依頼の進捗をリアルタイムで判定
+		foreach (var itemView in requestItems)
 		{
-			requestProgress.state = RequestState.Completed;
-			Debug.Log($"[RequestListManager] Request Completed: {title}");
-		}
+			if (itemView == null || itemView.RequestProgress == null) continue;
+			if (itemView.RequestProgress.state != RequestState.InProgress) continue;
 
-		// UI更新
-		RefreshRequestDisplay(chapter, section, title);
+			var beforeProgress = itemView.RequestProgress.currentProgress;
+			switch (itemView.RequestData.Type)
+			{
+				case 1:
+					// RequestItemViewのUIで選択
+					break;
+				case 2:
+					break;
+				case 3:
+					break;
+				case 4:
+					break;
+				case 5:
+					break;
+				case 6:
+					break;
+				case 7:
+					break;
+				case 8:
+					break;
+				case 9:
+					break;
+				case 10:
+					break;
+
+				default:
+					Debug.LogWarning($"[RequestProgressManager] No specific handling for request type: {itemView.RequestData.Type}");
+					break;
+			}
+
+			if (beforeProgress != itemView.RequestProgress.currentProgress)
+			{
+				// UI更新
+				itemView.UpdateDisplay();
+			}
+		}
 	}
 
 	/// <summary>

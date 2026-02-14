@@ -215,4 +215,5 @@ public class RequestItemView : MonoBehaviour
 	{
 		onRejectCallback?.Invoke(this);
 	}
+
 }
