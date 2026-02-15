@@ -109,15 +109,40 @@ public class UserData : MonoBehaviour
 	{
 		return VisitedChapterSections.Contains($"{chapter}_{section}");
 	}
+	/// <summary>
+	/// 素材の排出を記録（統計更新）— ノード種類別も同時に記録
+	/// </summary>
+	public void RecordResourceOutput(int resourceId, int amount, int nodeId)
+	{
+		ResourceStatistics.RecordOutput(resourceId, amount, nodeId);
+		Debug.Log($"[UserData] Recorded output: NodeID={nodeId}, ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}, NodeAvgOutput={ResourceStatistics.GetNodeAverageOutput(nodeId, resourceId):F2}");
+	}
 
 	/// <summary>
-	/// 素材の排出を記録（統計更新）
+	/// 素材の排出を記録（統計更新）— 後方互換用（nodeId不明の場合）
 	/// </summary>
 	public void RecordResourceOutput(int resourceId, int amount)
 	{
 		ResourceStatistics.RecordOutput(resourceId, amount);
-		Debug.Log($"[UserData] Recorded output: ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}, MaxAvgOutput={ResourceStatistics.GetMaxAverageOutput(resourceId):F2}");
+		Debug.Log($"[UserData] Recorded output: ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}");
 	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の現在の平均排出量を取得
+	/// </summary>
+	public float GetNodeResourceAverageOutput(int nodeId, int resourceId)
+	{
+		return ResourceStatistics.GetNodeAverageOutput(nodeId, resourceId);
+	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の最大平均排出量を取得
+	/// </summary>
+	public float GetNodeResourceMaxAverageOutput(int nodeId, int resourceId)
+	{
+		return ResourceStatistics.GetNodeMaxAverageOutput(nodeId, resourceId);
+	}
+
 
 	/// <summary>
 	/// 指定した素材の現在の平均排出量を取得

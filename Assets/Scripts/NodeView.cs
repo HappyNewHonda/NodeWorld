@@ -377,10 +377,10 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 			int newQuantity = Mathf.Min(port.Quantity + produceAmount, port.MaxStock);
 			port.SetQuantity(newQuantity);
 
-			// 素材の排出を記録（統計更新）
+			// 素材の排出を記録（統計更新）— ノード種類別も記録
 			if (produceAmount > 0 && !port.IsResourceBuffer)
 			{
-				UserData.Instance.RecordResourceOutput((int)port.resourceType, produceAmount);
+				UserData.Instance.RecordResourceOutput((int)port.resourceType, produceAmount, nodeId);
 			}
 		}
 

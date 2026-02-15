@@ -3,6 +3,104 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// ノード種類×素材の統計データ（1エントリ = 1ノード種類 × 1素材）
+/// </summary>
+[Serializable]
+public class NodeResourceStatistics
+{
+	public int nodeId;
+	public int resourceId;
+
+	/// <summary>現在の排出平均（1秒あたり）</summary>
+	public float averageOutput;
+
+	/// <summary>排出平均の最大値（1秒あたり）</summary>
+	public float maxAverageOutput;
+
+	/// <summary>累計排出量</summary>
+	public long totalOutput;
+
+	[NonSerialized]
+	private Dictionary<int, int> secondlyOutput = new Dictionary<int, int>();
+
+	private const int AVERAGE_WINDOW_SECONDS = 5;
+
+	public float startTime;
+
+	public NodeResourceStatistics(int nodeId, int resourceId)
+	{
+		this.nodeId = nodeId;
+		this.resourceId = resourceId;
+		this.averageOutput = 0f;
+		this.maxAverageOutput = 0f;
+		this.totalOutput = 0;
+		this.startTime = Time.time;
+		this.secondlyOutput = new Dictionary<int, int>();
+	}
+
+	public void RecordOutput(int amount)
+	{
+		if (amount <= 0) return;
+
+		totalOutput += amount;
+
+		int second = Mathf.FloorToInt(Time.time);
+
+		if (!secondlyOutput.ContainsKey(second))
+		{
+			secondlyOutput[second] = 0;
+		}
+		secondlyOutput[second] += amount;
+
+		int cutoffSecond = second - AVERAGE_WINDOW_SECONDS;
+		var keysToRemove = new List<int>();
+		foreach (var key in secondlyOutput.Keys)
+		{
+			if (key < cutoffSecond)
+			{
+				keysToRemove.Add(key);
+			}
+		}
+		foreach (var key in keysToRemove)
+		{
+			secondlyOutput.Remove(key);
+		}
+
+		if (secondlyOutput.Count > 0)
+		{
+			int totalInWindow = 0;
+			foreach (var value in secondlyOutput.Values)
+			{
+				totalInWindow += value;
+			}
+
+			averageOutput = (float)totalInWindow / secondlyOutput.Count;
+
+			if (averageOutput > maxAverageOutput)
+			{
+				maxAverageOutput = averageOutput;
+			}
+		}
+	}
+
+	public void Reset()
+	{
+		averageOutput = 0f;
+		totalOutput = 0;
+		startTime = Time.time;
+		secondlyOutput.Clear();
+	}
+
+	public void OnAfterDeserialize()
+	{
+		if (secondlyOutput == null)
+		{
+			secondlyOutput = new Dictionary<int, int>();
+		}
+	}
+}
+
+/// <summary>
 /// 素材ごとの統計データ
 /// </summary>
 [Serializable]
@@ -141,6 +239,9 @@ public class ResourceStatisticsData
 {
 	public List<ResourceStatistics> statistics = new List<ResourceStatistics>();
 
+	/// <summary>ノード種類×素材の統計</summary>
+	public List<NodeResourceStatistics> nodeStatistics = new List<NodeResourceStatistics>();
+
 	/// <summary>
 	/// 指定した素材の統計を取得または作成
 	/// </summary>
@@ -161,12 +262,44 @@ public class ResourceStatisticsData
 	}
 
 	/// <summary>
-	/// 素材の排出を記録
+	/// 指定したノード種類×素材の統計を取得または作成
+	/// </summary>
+	public NodeResourceStatistics GetOrCreateNodeStatistics(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		if (stat == null)
+		{
+			stat = new NodeResourceStatistics(nodeId, resourceId);
+			nodeStatistics.Add(stat);
+		}
+		else
+		{
+			stat.OnAfterDeserialize();
+		}
+		return stat;
+	}
+
+	/// <summary>
+	/// 素材の排出を記録（グローバル統計のみ）
 	/// </summary>
 	public void RecordOutput(int resourceId, int amount)
 	{
 		var stat = GetOrCreateStatistics(resourceId);
 		stat.RecordOutput(amount);
+	}
+
+	/// <summary>
+	/// 素材の排出を記録（グローバル統計＋ノード種類別統計）
+	/// </summary>
+	public void RecordOutput(int resourceId, int amount, int nodeId)
+	{
+		// グローバル統計
+		var stat = GetOrCreateStatistics(resourceId);
+		stat.RecordOutput(amount);
+
+		// ノード種類別統計
+		var nodeStat = GetOrCreateNodeStatistics(nodeId, resourceId);
+		nodeStat.RecordOutput(amount);
 	}
 
 	/// <summary>
@@ -188,11 +321,58 @@ public class ResourceStatisticsData
 	}
 
 	/// <summary>
+	/// 指定したノード種類×素材の現在の平均排出量を取得（1秒あたり）
+	/// </summary>
+	public float GetNodeAverageOutput(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		return stat?.averageOutput ?? 0f;
+	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の最大平均排出量を取得（1秒あたり）
+	/// </summary>
+	public float GetNodeMaxAverageOutput(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		return stat?.maxAverageOutput ?? 0f;
+	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の累計排出量を取得
+	/// </summary>
+	public long GetNodeTotalOutput(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		return stat?.totalOutput ?? 0;
+	}
+
+	/// <summary>
+	/// 指定したノード種類が生産している全素材の統計を取得
+	/// </summary>
+	public List<NodeResourceStatistics> GetStatisticsByNodeId(int nodeId)
+	{
+		return nodeStatistics.FindAll(s => s.nodeId == nodeId);
+	}
+
+	/// <summary>
+	/// 指定した素材を生産している全ノード種類の統計を取得
+	/// </summary>
+	public List<NodeResourceStatistics> GetStatisticsByResourceId(int resourceId)
+	{
+		return nodeStatistics.FindAll(s => s.resourceId == resourceId);
+	}
+
+	/// <summary>
 	/// すべての素材の統計をリセット（最大値は保持）
 	/// </summary>
 	public void ResetAll()
 	{
 		foreach (var stat in statistics)
+		{
+			stat.Reset();
+		}
+		foreach (var stat in nodeStatistics)
 		{
 			stat.Reset();
 		}

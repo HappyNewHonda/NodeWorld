@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Data.Master;
 using Mono.Cecil.Cil;
 using UnityEngine;
@@ -24,6 +25,7 @@ public class RequestListManager : MonoBehaviour
 	{
 		UpdateRequestProgress();
 	}
+
 	/// <summary>
 	/// 指定したチャプター・セクションの依頼を受け取る（初回のみ）
 	/// </summary>
@@ -62,21 +64,6 @@ public class RequestListManager : MonoBehaviour
 			{
 				CreateRequestItem(requestData, chapter, section);
 			}
-		}
-	}
-
-	/// <summary>
-	/// すべての依頼を表示
-	/// </summary>
-	public void DisplayAllRequests()
-	{
-		ClearAllRequests();
-
-		if (MasterData.Instance == null || MasterData.Instance.RequestDatas == null || MasterData.Instance.RequestDatas.data == null) return;
-
-		foreach (var requestData in MasterData.Instance.RequestDatas.data)
-		{
-			CreateRequestItem(requestData, requestData.Chapter, requestData.Section);
 		}
 	}
 
@@ -199,6 +186,8 @@ public class RequestListManager : MonoBehaviour
 			if (itemView.RequestProgress.state != RequestState.InProgress) continue;
 
 			var beforeProgress = itemView.RequestProgress.currentProgress;
+			var targetNodes = itemView.RequestData.TargetNodes;
+			var progressList = new List<float>();
 			switch (itemView.RequestData.Type)
 			{
 				case 1:
@@ -219,6 +208,21 @@ public class RequestListManager : MonoBehaviour
 				case 8:
 					break;
 				case 9:
+					foreach (var nodeId in itemView.RequestData.TargetNodes)
+					{
+						foreach (var statistic in UserData.Instance.ResourceStatistics.GetStatisticsByNodeId(nodeId))
+						{
+							progressList.Add(Mathf.Min(1, statistic.maxAverageOutput / itemView.RequestData.Num));
+						}
+					}
+					if (progressList.Count > 0)
+					{
+						itemView.RequestProgress.UpdateProgress((int)(progressList.Average() * 100));
+					}
+					else
+					{
+						itemView.RequestProgress.UpdateProgress(0);
+					}
 					break;
 				case 10:
 					break;
@@ -234,29 +238,5 @@ public class RequestListManager : MonoBehaviour
 				itemView.UpdateDisplay();
 			}
 		}
-	}
-
-	/// <summary>
-	/// 特定の依頼のUI表示を更新
-	/// </summary>
-	private void RefreshRequestDisplay(int chapter, int section, string title)
-	{
-		var itemView = requestItems.Find(item =>
-			item.RequestData.Chapter == chapter &&
-			item.RequestData.Section == section &&
-			item.RequestData.DisplayTitle == title);
-
-		if (itemView != null)
-		{
-			itemView.UpdateDisplay();
-		}
-	}
-
-	/// <summary>
-	/// 現在表示されている依頼リストを取得
-	/// </summary>
-	public List<RequestItemView> GetCurrentRequests()
-	{
-		return new List<RequestItemView>(requestItems);
 	}
 }

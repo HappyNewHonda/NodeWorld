@@ -35,7 +35,6 @@ public class NodeEffectsDebugView : MonoBehaviour
             text.fontSize = 14;
             text.alignment = TextAlignmentOptions.TopRight;
             text.color = new Color(1,1,1,0.8f);
-            text.enableWordWrapping = false;
             text.raycastTarget = false;
         }
     }

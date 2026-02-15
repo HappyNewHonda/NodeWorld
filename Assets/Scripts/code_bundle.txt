@@ -1,8 +1,8 @@
 ﻿=== Code Bundle ===
-Generated at: 2026-02-10 18:02:21
-Root: C:\Subversion\MobileProject\NodeWorld\Assets\Scripts
+Generated at: 2026-02-15 10:12:13
+Root: C:\Project\NodeWorld\Assets\Scripts
 Extensions: .cs, .json
-Count: 56
+Count: 57
 
 === ContextMenuController.cs ===
 ```csharp
@@ -4722,7 +4722,7 @@ public class GraphUIManager : MonoBehaviour
 		ClearGraph();
 
 		// ユーザーデータを復元
-		UserData.Instance.LoadSaveData(saveData.userData);
+		UserData.Instance.LoadFromSaveData(saveData.userData);
 
 		var loadedNodes = new List<NodeView>();
 
@@ -5369,8 +5369,15 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		// ポートから直接生産数と上限を取得
 		foreach (var port in outputPorts)
 		{
-			int newQuantity = Mathf.Min(port.Quantity + port.ProduceAmount, port.MaxStock);
+			int produceAmount = port.ProduceAmount;
+			int newQuantity = Mathf.Min(port.Quantity + produceAmount, port.MaxStock);
 			port.SetQuantity(newQuantity);
+
+			// 素材の排出を記録（統計更新）
+			if (produceAmount > 0 && !port.IsResourceBuffer)
+			{
+				UserData.Instance.RecordResourceOutput((int)port.resourceType, produceAmount);
+			}
 		}
 
 		// 生産完了イベント発火
@@ -6991,6 +6998,7 @@ public class RequestItemView : MonoBehaviour
 	{
 		onRejectCallback?.Invoke(this);
 	}
+
 }
 ```
 
@@ -6998,6 +7006,7 @@ public class RequestItemView : MonoBehaviour
 ```csharp
 using System.Collections.Generic;
 using Data.Master;
+using Mono.Cecil.Cil;
 using UnityEngine;
 
 /// <summary>
@@ -7014,6 +7023,13 @@ public class RequestListManager : MonoBehaviour
 
 	private List<RequestItemView> requestItems = new List<RequestItemView>();
 
+	/// <summary>
+	/// 更新処理
+	/// </summary>
+	private void Update()
+	{
+		UpdateRequestProgress();
+	}
 	/// <summary>
 	/// 指定したチャプター・セクションの依頼を受け取る（初回のみ）
 	/// </summary>
@@ -7180,20 +7196,53 @@ public class RequestListManager : MonoBehaviour
 	/// <summary>
 	/// 依頼の進捗を更新
 	/// </summary>
-	public void UpdateRequestProgress(int chapter, int section, string title, int progress)
+	public void UpdateRequestProgress()
 	{
-		var requestProgress = UserData.Instance.RequestProgress.GetOrCreateRequest(chapter, section, title, 0);
-		requestProgress.currentProgress = progress;
-
-		// 達成済みかチェック
-		if (requestProgress.currentProgress >= requestProgress.targetProgress && requestProgress.state == RequestState.InProgress)
+		// 各依頼の進捗をリアルタイムで判定
+		foreach (var itemView in requestItems)
 		{
-			requestProgress.state = RequestState.Completed;
-			Debug.Log($"[RequestListManager] Request Completed: {title}");
-		}
+			if (itemView == null || itemView.RequestProgress == null) continue;
+			if (itemView.RequestProgress.state != RequestState.InProgress) continue;
 
-		// UI更新
-		RefreshRequestDisplay(chapter, section, title);
+			var beforeProgress = itemView.RequestProgress.currentProgress;
+			switch (itemView.RequestData.Type)
+			{
+				case 1:
+					// RequestItemViewのUIで選択
+					break;
+				case 2:
+					break;
+				case 3:
+					break;
+				case 4:
+					break;
+				case 5:
+					break;
+				case 6:
+					break;
+				case 7:
+					break;
+				case 8:
+					break;
+				case 9:
+					foreach (var item in itemView.RequestData.TargetNodes)
+					{
+					}
+					break;
+				case 10:
+					break;
+
+				default:
+					Debug.LogWarning($"[RequestProgressManager] No specific handling for request type: {itemView.RequestData.Type}");
+					break;
+			}
+
+			if (beforeProgress != itemView.RequestProgress.currentProgress)
+			{
+				// UI更新
+				itemView.UpdateDisplay();
+			}
+		}
 	}
 
 	/// <summary>
@@ -7265,6 +7314,52 @@ public class RequestProgress
 		this.currentProgress = 0;
 		this.targetProgress = targetProgress;
 	}
+
+	/// <summary>
+	/// 進捗を更新し、必要に応じて状態を自動更新
+	/// </summary>
+	public void UpdateProgress(int progress)
+	{
+		currentProgress = progress;
+		AutoUpdateState();
+	}
+
+	/// <summary>
+	/// 進捗を加算し、必要に応じて状態を自動更新
+	/// </summary>
+	public void AddProgress(int amount)
+	{
+		currentProgress += amount;
+		AutoUpdateState();
+	}
+
+	/// <summary>
+	/// 進行状況に基づいて状態を自動更新
+	/// </summary>
+	private void AutoUpdateState()
+	{
+		// InProgress中に目標達成したらCompletedに変更
+		if (state == RequestState.InProgress && IsProgressCompleted())
+		{
+			state = RequestState.Completed;
+		}
+	}
+
+	/// <summary>
+	/// 進捗が達成されたかチェック
+	/// </summary>
+	public bool IsProgressCompleted()
+	{
+		return currentProgress >= targetProgress;
+	}
+
+	/// <summary>
+	/// 状態を指定して更新
+	/// </summary>
+	public void SetState(RequestState newState)
+	{
+		state = newState;
+	}
 }
 
 /// <summary>
@@ -7298,6 +7393,24 @@ public class RequestProgressData
 	}
 
 	/// <summary>
+	/// 依頼の進捗を更新
+	/// </summary>
+	public void UpdateRequestProgress(int chapter, int section, string title, int progress)
+	{
+		var request = GetOrCreateRequest(chapter, section, title, 0);
+		request.UpdateProgress(progress);
+	}
+
+	/// <summary>
+	/// 依頼の進捗を加算
+	/// </summary>
+	public void AddRequestProgress(int chapter, int section, string title, int amount)
+	{
+		var request = GetOrCreateRequest(chapter, section, title, 0);
+		request.AddProgress(amount);
+	}
+
+	/// <summary>
 	/// すべての依頼が受諾済みかチェック（依頼が0件の場合もtrueを返す）
 	/// </summary>
 	public bool AreAllRequestsAccepted(int chapter, int section)
@@ -7306,6 +7419,238 @@ public class RequestProgressData
 		// 依頼が0件の場合は自動的に完了とみなす（デモのみのセクション対応）
 		if (chapterRequests.Count == 0) return true;
 		return chapterRequests.TrueForAll(r => r.state == RequestState.Accepted);
+	}
+
+	/// <summary>
+	/// 指定した依頼が達成されたかチェック
+	/// </summary>
+	public bool IsRequestCompleted(int chapter, int section, string title)
+	{
+		var request = requests.Find(r => r.chapter == chapter && r.section == section && r.title == title);
+		return request != null && request.IsProgressCompleted();
+	}
+
+	/// <summary>
+	/// チャプター・セクション内の達成済み依頼数を取得
+	/// </summary>
+	public int GetCompletedRequestCount(int chapter, int section)
+	{
+		var chapterRequests = GetRequestsByChapterSection(chapter, section);
+		return chapterRequests.FindAll(r => r.state == RequestState.Completed).Count;
+	}
+
+	/// <summary>
+	/// チャプター・セクション内の依頼達成率を取得（0.0～1.0）
+	/// </summary>
+	public float GetRequestCompletionRate(int chapter, int section)
+	{
+		var chapterRequests = GetRequestsByChapterSection(chapter, section);
+		if (chapterRequests.Count == 0) return 1f;
+		return (float)GetCompletedRequestCount(chapter, section) / chapterRequests.Count;
+	}
+}
+```
+
+=== ResourceStatistics.cs ===
+```csharp
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// 素材ごとの統計データ
+/// </summary>
+[Serializable]
+public class ResourceStatistics
+{
+	/// <summary>
+	/// 素材ID
+	/// </summary>
+	public int resourceId;
+	
+	/// <summary>
+	/// 現在の排出平均（1秒あたり）
+	/// </summary>
+	public float averageOutput;
+	
+	/// <summary>
+	/// 排出平均の最大値（これまでの記録、1秒あたり）
+	/// </summary>
+	public float maxAverageOutput;
+	
+	/// <summary>
+	/// 累計排出量
+	/// </summary>
+	public long totalOutput;
+	
+	/// <summary>
+	/// 秒ごとの生産量を記録（キー：秒数、値：その秒の生産量）
+	/// </summary>
+	[NonSerialized]
+	private Dictionary<int, int> secondlyOutput = new Dictionary<int, int>();
+	
+	/// <summary>
+	/// 平均計算に使用する秒数（直近N秒）
+	/// </summary>
+	private const int AVERAGE_WINDOW_SECONDS = 5;
+	
+	/// <summary>
+	/// 計測開始時刻（秒）
+	/// </summary>
+	public float startTime;
+
+	public ResourceStatistics(int resourceId)
+	{
+		this.resourceId = resourceId;
+		this.averageOutput = 0f;
+		this.maxAverageOutput = 0f;
+		this.totalOutput = 0;
+		this.startTime = Time.time;
+		this.secondlyOutput = new Dictionary<int, int>();
+	}
+
+	/// <summary>
+	/// 新しい排出量を記録して平均を更新（1秒あたりの平均）
+	/// </summary>
+	public void RecordOutput(int amount)
+	{
+		if (amount <= 0) return;
+
+		totalOutput += amount;
+		
+		// 現在の秒数を取得（整数）
+		int second = Mathf.FloorToInt(Time.time);
+		
+		// その秒のバケツに加算
+		if (!secondlyOutput.ContainsKey(second))
+		{
+			secondlyOutput[second] = 0;
+		}
+		secondlyOutput[second] += amount;
+		
+		// 古いデータを削除（ウィンドウサイズを超えたもの）
+		int cutoffSecond = second - AVERAGE_WINDOW_SECONDS;
+		var keysToRemove = new List<int>();
+		foreach (var key in secondlyOutput.Keys)
+		{
+			if (key < cutoffSecond)
+			{
+				keysToRemove.Add(key);
+			}
+		}
+		foreach (var key in keysToRemove)
+		{
+			secondlyOutput.Remove(key);
+		}
+		
+		// 平均を計算
+		if (secondlyOutput.Count > 0)
+		{
+			int totalInWindow = 0;
+			foreach (var value in secondlyOutput.Values)
+			{
+				totalInWindow += value;
+			}
+			
+			// 実際に記録がある秒数で割る（0の秒は含めない）
+			averageOutput = (float)totalInWindow / secondlyOutput.Count;
+			
+			// 十分な時間が経過している場合のみ最大値を更新（上振れ防止）
+			int elapsedSeconds = second - Mathf.FloorToInt(startTime);
+			if (averageOutput > maxAverageOutput)
+			{
+				maxAverageOutput = averageOutput;
+			}
+		}
+	}
+
+	/// <summary>
+	/// 統計をリセット
+	/// </summary>
+	public void Reset()
+	{
+		averageOutput = 0f;
+		totalOutput = 0;
+		startTime = Time.time;
+		secondlyOutput.Clear();
+		// 最大値はリセットしない（記録として残す）
+	}
+	
+	/// <summary>
+	/// デシリアライズ後の初期化
+	/// </summary>
+	public void OnAfterDeserialize()
+	{
+		if (secondlyOutput == null)
+		{
+			secondlyOutput = new Dictionary<int, int>();
+		}
+	}
+}
+
+/// <summary>
+/// すべての素材の統計データを管理
+/// </summary>
+[Serializable]
+public class ResourceStatisticsData
+{
+	public List<ResourceStatistics> statistics = new List<ResourceStatistics>();
+
+	/// <summary>
+	/// 指定した素材の統計を取得または作成
+	/// </summary>
+	public ResourceStatistics GetOrCreateStatistics(int resourceId)
+	{
+		var stat = statistics.Find(s => s.resourceId == resourceId);
+		if (stat == null)
+		{
+			stat = new ResourceStatistics(resourceId);
+			statistics.Add(stat);
+		}
+		else
+		{
+			// デシリアライズ後の初期化
+			stat.OnAfterDeserialize();
+		}
+		return stat;
+	}
+
+	/// <summary>
+	/// 素材の排出を記録
+	/// </summary>
+	public void RecordOutput(int resourceId, int amount)
+	{
+		var stat = GetOrCreateStatistics(resourceId);
+		stat.RecordOutput(amount);
+	}
+
+	/// <summary>
+	/// 指定した素材の現在の平均排出量を取得（1秒あたり）
+	/// </summary>
+	public float GetAverageOutput(int resourceId)
+	{
+		var stat = statistics.Find(s => s.resourceId == resourceId);
+		return stat?.averageOutput ?? 0f;
+	}
+
+	/// <summary>
+	/// 指定した素材の最大平均排出量を取得（1秒あたり）
+	/// </summary>
+	public float GetMaxAverageOutput(int resourceId)
+	{
+		var stat = statistics.Find(s => s.resourceId == resourceId);
+		return stat?.maxAverageOutput ?? 0f;
+	}
+
+	/// <summary>
+	/// すべての素材の統計をリセット（最大値は保持）
+	/// </summary>
+	public void ResetAll()
+	{
+		foreach (var stat in statistics)
+		{
+			stat.Reset();
+		}
 	}
 }
 ```
@@ -8950,6 +9295,7 @@ public class UIGraphGrid : Graphic
 === UserData.cs ===
 ```csharp
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -8973,7 +9319,10 @@ public class UserData : MonoBehaviour
 	public RequestProgressData RequestProgress = new RequestProgressData();
 
 	// 訪問済みのチャプター・セクション
-	public System.Collections.Generic.HashSet<string> VisitedChapterSections = new System.Collections.Generic.HashSet<string>();
+	public HashSet<string> VisitedChapterSections = new HashSet<string>();
+
+	// 素材の統計データ
+	public ResourceStatisticsData ResourceStatistics = new ResourceStatisticsData();
 
 	public int Money
 	{
@@ -9057,6 +9406,31 @@ public class UserData : MonoBehaviour
 		return VisitedChapterSections.Contains($"{chapter}_{section}");
 	}
 
+	/// <summary>
+	/// 素材の排出を記録（統計更新）
+	/// </summary>
+	public void RecordResourceOutput(int resourceId, int amount)
+	{
+		ResourceStatistics.RecordOutput(resourceId, amount);
+		Debug.Log($"[UserData] Recorded output: ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}, MaxAvgOutput={ResourceStatistics.GetMaxAverageOutput(resourceId):F2}");
+	}
+
+	/// <summary>
+	/// 指定した素材の現在の平均排出量を取得
+	/// </summary>
+	public float GetResourceAverageOutput(int resourceId)
+	{
+		return ResourceStatistics.GetAverageOutput(resourceId);
+	}
+
+	/// <summary>
+	/// 指定した素材の最大平均排出量を取得
+	/// </summary>
+	public float GetResourceMaxAverageOutput(int resourceId)
+	{
+		return ResourceStatistics.GetMaxAverageOutput(resourceId);
+	}
+
 	private void UpdateMoneyUI()
 	{
 		if (moneyText != null)
@@ -9076,20 +9450,30 @@ public class UserData : MonoBehaviour
 			currentChapter = this.CurrentChapter,
 			currentSection = this.CurrentSection,
 			requestProgress = this.RequestProgress,
-			visitedChapterSections = new System.Collections.Generic.List<string>(this.VisitedChapterSections)
+			visitedChapterSections = new List<string>(this.VisitedChapterSections),
+			resourceStatistics = this.ResourceStatistics
 		};
 	}
 
 	/// <summary>
 	/// セーブデータから復元
 	/// </summary>
-	public void LoadSaveData(SavedUserData saveData)
+	public void LoadFromSaveData(SavedUserData saveData)
 	{
+		if (saveData == null)
+		{
+			Debug.LogWarning("[UserData] SaveData is null, using defaults");
+			return;
+		}
+
 		this.Money = saveData.money;
 		this.CurrentChapter = saveData.currentChapter;
 		this.CurrentSection = saveData.currentSection;
 		this.RequestProgress = saveData.requestProgress ?? new RequestProgressData();
-		this.VisitedChapterSections = new System.Collections.Generic.HashSet<string>(saveData.visitedChapterSections ?? new System.Collections.Generic.List<string>());
+		this.VisitedChapterSections = new HashSet<string>(saveData.visitedChapterSections ?? new List<string>());
+		this.ResourceStatistics = saveData.resourceStatistics ?? new ResourceStatisticsData();
+
+		Debug.Log($"[UserData] Loaded: Money={this.Money}, Chapter={this.CurrentChapter}, Section={this.CurrentSection}");
 	}
 }
 
@@ -9103,7 +9487,8 @@ public class SavedUserData
 	public int currentChapter;
 	public int currentSection;
 	public RequestProgressData requestProgress;
-	public System.Collections.Generic.List<string> visitedChapterSections;
+	public List<string> visitedChapterSections;
+	public ResourceStatisticsData resourceStatistics;
 }
 
 ```
