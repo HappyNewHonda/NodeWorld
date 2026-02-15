@@ -112,6 +112,7 @@ public class RequestItemView : MonoBehaviour
 				acceptButton.gameObject.SetActive(true);
 				break;
 			case RequestState.Accepted:
+				gameObject.SetActive(false);
 				break;
 		}
 

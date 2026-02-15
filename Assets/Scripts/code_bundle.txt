@@ -1,5 +1,5 @@
 ﻿=== Code Bundle ===
-Generated at: 2026-02-15 10:12:13
+Generated at: 2026-02-15 11:07:21
 Root: C:\Project\NodeWorld\Assets\Scripts
 Extensions: .cs, .json
 Count: 57
@@ -3630,7 +3630,6 @@ public class NodeEffectsDebugView : MonoBehaviour
             text.fontSize = 14;
             text.alignment = TextAlignmentOptions.TopRight;
             text.color = new Color(1,1,1,0.8f);
-            text.enableWordWrapping = false;
             text.raycastTarget = false;
         }
     }
@@ -5373,10 +5372,10 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 			int newQuantity = Mathf.Min(port.Quantity + produceAmount, port.MaxStock);
 			port.SetQuantity(newQuantity);
 
-			// 素材の排出を記録（統計更新）
+			// 素材の排出を記録（統計更新）— ノード種類別も記録
 			if (produceAmount > 0 && !port.IsResourceBuffer)
 			{
-				UserData.Instance.RecordResourceOutput((int)port.resourceType, produceAmount);
+				UserData.Instance.RecordResourceOutput((int)port.resourceType, produceAmount, nodeId);
 			}
 		}
 
@@ -7005,6 +7004,7 @@ public class RequestItemView : MonoBehaviour
 === RequestListManager.cs ===
 ```csharp
 using System.Collections.Generic;
+using System.Linq;
 using Data.Master;
 using Mono.Cecil.Cil;
 using UnityEngine;
@@ -7030,6 +7030,7 @@ public class RequestListManager : MonoBehaviour
 	{
 		UpdateRequestProgress();
 	}
+
 	/// <summary>
 	/// 指定したチャプター・セクションの依頼を受け取る（初回のみ）
 	/// </summary>
@@ -7068,21 +7069,6 @@ public class RequestListManager : MonoBehaviour
 			{
 				CreateRequestItem(requestData, chapter, section);
 			}
-		}
-	}
-
-	/// <summary>
-	/// すべての依頼を表示
-	/// </summary>
-	public void DisplayAllRequests()
-	{
-		ClearAllRequests();
-
-		if (MasterData.Instance == null || MasterData.Instance.RequestDatas == null || MasterData.Instance.RequestDatas.data == null) return;
-
-		foreach (var requestData in MasterData.Instance.RequestDatas.data)
-		{
-			CreateRequestItem(requestData, requestData.Chapter, requestData.Section);
 		}
 	}
 
@@ -7205,6 +7191,8 @@ public class RequestListManager : MonoBehaviour
 			if (itemView.RequestProgress.state != RequestState.InProgress) continue;
 
 			var beforeProgress = itemView.RequestProgress.currentProgress;
+			var targetNodes = itemView.RequestData.TargetNodes;
+			var progressList = new List<float>();
 			switch (itemView.RequestData.Type)
 			{
 				case 1:
@@ -7225,8 +7213,20 @@ public class RequestListManager : MonoBehaviour
 				case 8:
 					break;
 				case 9:
-					foreach (var item in itemView.RequestData.TargetNodes)
+					foreach (var nodeId in itemView.RequestData.TargetNodes)
 					{
+						foreach (var statistic in UserData.Instance.ResourceStatistics.GetStatisticsByNodeId(nodeId))
+						{
+							progressList.Add(Mathf.Min(1, statistic.maxAverageOutput / itemView.RequestData.Num));
+						}
+					}
+					if (progressList.Count > 0)
+					{
+						itemView.RequestProgress.UpdateProgress((int)(progressList.Average() * 100));
+					}
+					else
+					{
+						itemView.RequestProgress.UpdateProgress(0);
 					}
 					break;
 				case 10:
@@ -7243,30 +7243,6 @@ public class RequestListManager : MonoBehaviour
 				itemView.UpdateDisplay();
 			}
 		}
-	}
-
-	/// <summary>
-	/// 特定の依頼のUI表示を更新
-	/// </summary>
-	private void RefreshRequestDisplay(int chapter, int section, string title)
-	{
-		var itemView = requestItems.Find(item =>
-			item.RequestData.Chapter == chapter &&
-			item.RequestData.Section == section &&
-			item.RequestData.DisplayTitle == title);
-
-		if (itemView != null)
-		{
-			itemView.UpdateDisplay();
-		}
-	}
-
-	/// <summary>
-	/// 現在表示されている依頼リストを取得
-	/// </summary>
-	public List<RequestItemView> GetCurrentRequests()
-	{
-		return new List<RequestItemView>(requestItems);
 	}
 }
 ```
@@ -7325,15 +7301,6 @@ public class RequestProgress
 	}
 
 	/// <summary>
-	/// 進捗を加算し、必要に応じて状態を自動更新
-	/// </summary>
-	public void AddProgress(int amount)
-	{
-		currentProgress += amount;
-		AutoUpdateState();
-	}
-
-	/// <summary>
 	/// 進行状況に基づいて状態を自動更新
 	/// </summary>
 	private void AutoUpdateState()
@@ -7385,68 +7352,14 @@ public class RequestProgressData
 	}
 
 	/// <summary>
-	/// 指定したチャプター・セクションの依頼を取得
-	/// </summary>
-	public List<RequestProgress> GetRequestsByChapterSection(int chapter, int section)
-	{
-		return requests.FindAll(r => r.chapter == chapter && r.section == section);
-	}
-
-	/// <summary>
-	/// 依頼の進捗を更新
-	/// </summary>
-	public void UpdateRequestProgress(int chapter, int section, string title, int progress)
-	{
-		var request = GetOrCreateRequest(chapter, section, title, 0);
-		request.UpdateProgress(progress);
-	}
-
-	/// <summary>
-	/// 依頼の進捗を加算
-	/// </summary>
-	public void AddRequestProgress(int chapter, int section, string title, int amount)
-	{
-		var request = GetOrCreateRequest(chapter, section, title, 0);
-		request.AddProgress(amount);
-	}
-
-	/// <summary>
 	/// すべての依頼が受諾済みかチェック（依頼が0件の場合もtrueを返す）
 	/// </summary>
 	public bool AreAllRequestsAccepted(int chapter, int section)
 	{
-		var chapterRequests = GetRequestsByChapterSection(chapter, section);
+		var chapterRequests = requests.FindAll(r => r.chapter == chapter && r.section == section);
 		// 依頼が0件の場合は自動的に完了とみなす（デモのみのセクション対応）
 		if (chapterRequests.Count == 0) return true;
 		return chapterRequests.TrueForAll(r => r.state == RequestState.Accepted);
-	}
-
-	/// <summary>
-	/// 指定した依頼が達成されたかチェック
-	/// </summary>
-	public bool IsRequestCompleted(int chapter, int section, string title)
-	{
-		var request = requests.Find(r => r.chapter == chapter && r.section == section && r.title == title);
-		return request != null && request.IsProgressCompleted();
-	}
-
-	/// <summary>
-	/// チャプター・セクション内の達成済み依頼数を取得
-	/// </summary>
-	public int GetCompletedRequestCount(int chapter, int section)
-	{
-		var chapterRequests = GetRequestsByChapterSection(chapter, section);
-		return chapterRequests.FindAll(r => r.state == RequestState.Completed).Count;
-	}
-
-	/// <summary>
-	/// チャプター・セクション内の依頼達成率を取得（0.0～1.0）
-	/// </summary>
-	public float GetRequestCompletionRate(int chapter, int section)
-	{
-		var chapterRequests = GetRequestsByChapterSection(chapter, section);
-		if (chapterRequests.Count == 0) return 1f;
-		return (float)GetCompletedRequestCount(chapter, section) / chapterRequests.Count;
 	}
 }
 ```
@@ -7456,6 +7369,104 @@ public class RequestProgressData
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+
+/// <summary>
+/// ノード種類×素材の統計データ（1エントリ = 1ノード種類 × 1素材）
+/// </summary>
+[Serializable]
+public class NodeResourceStatistics
+{
+	public int nodeId;
+	public int resourceId;
+
+	/// <summary>現在の排出平均（1秒あたり）</summary>
+	public float averageOutput;
+
+	/// <summary>排出平均の最大値（1秒あたり）</summary>
+	public float maxAverageOutput;
+
+	/// <summary>累計排出量</summary>
+	public long totalOutput;
+
+	[NonSerialized]
+	private Dictionary<int, int> secondlyOutput = new Dictionary<int, int>();
+
+	private const int AVERAGE_WINDOW_SECONDS = 5;
+
+	public float startTime;
+
+	public NodeResourceStatistics(int nodeId, int resourceId)
+	{
+		this.nodeId = nodeId;
+		this.resourceId = resourceId;
+		this.averageOutput = 0f;
+		this.maxAverageOutput = 0f;
+		this.totalOutput = 0;
+		this.startTime = Time.time;
+		this.secondlyOutput = new Dictionary<int, int>();
+	}
+
+	public void RecordOutput(int amount)
+	{
+		if (amount <= 0) return;
+
+		totalOutput += amount;
+
+		int second = Mathf.FloorToInt(Time.time);
+
+		if (!secondlyOutput.ContainsKey(second))
+		{
+			secondlyOutput[second] = 0;
+		}
+		secondlyOutput[second] += amount;
+
+		int cutoffSecond = second - AVERAGE_WINDOW_SECONDS;
+		var keysToRemove = new List<int>();
+		foreach (var key in secondlyOutput.Keys)
+		{
+			if (key < cutoffSecond)
+			{
+				keysToRemove.Add(key);
+			}
+		}
+		foreach (var key in keysToRemove)
+		{
+			secondlyOutput.Remove(key);
+		}
+
+		if (secondlyOutput.Count > 0)
+		{
+			int totalInWindow = 0;
+			foreach (var value in secondlyOutput.Values)
+			{
+				totalInWindow += value;
+			}
+
+			averageOutput = (float)totalInWindow / secondlyOutput.Count;
+
+			if (averageOutput > maxAverageOutput)
+			{
+				maxAverageOutput = averageOutput;
+			}
+		}
+	}
+
+	public void Reset()
+	{
+		averageOutput = 0f;
+		totalOutput = 0;
+		startTime = Time.time;
+		secondlyOutput.Clear();
+	}
+
+	public void OnAfterDeserialize()
+	{
+		if (secondlyOutput == null)
+		{
+			secondlyOutput = new Dictionary<int, int>();
+		}
+	}
+}
 
 /// <summary>
 /// 素材ごとの統計データ
@@ -7596,6 +7607,9 @@ public class ResourceStatisticsData
 {
 	public List<ResourceStatistics> statistics = new List<ResourceStatistics>();
 
+	/// <summary>ノード種類×素材の統計</summary>
+	public List<NodeResourceStatistics> nodeStatistics = new List<NodeResourceStatistics>();
+
 	/// <summary>
 	/// 指定した素材の統計を取得または作成
 	/// </summary>
@@ -7616,12 +7630,44 @@ public class ResourceStatisticsData
 	}
 
 	/// <summary>
-	/// 素材の排出を記録
+	/// 指定したノード種類×素材の統計を取得または作成
+	/// </summary>
+	public NodeResourceStatistics GetOrCreateNodeStatistics(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		if (stat == null)
+		{
+			stat = new NodeResourceStatistics(nodeId, resourceId);
+			nodeStatistics.Add(stat);
+		}
+		else
+		{
+			stat.OnAfterDeserialize();
+		}
+		return stat;
+	}
+
+	/// <summary>
+	/// 素材の排出を記録（グローバル統計のみ）
 	/// </summary>
 	public void RecordOutput(int resourceId, int amount)
 	{
 		var stat = GetOrCreateStatistics(resourceId);
 		stat.RecordOutput(amount);
+	}
+
+	/// <summary>
+	/// 素材の排出を記録（グローバル統計＋ノード種類別統計）
+	/// </summary>
+	public void RecordOutput(int resourceId, int amount, int nodeId)
+	{
+		// グローバル統計
+		var stat = GetOrCreateStatistics(resourceId);
+		stat.RecordOutput(amount);
+
+		// ノード種類別統計
+		var nodeStat = GetOrCreateNodeStatistics(nodeId, resourceId);
+		nodeStat.RecordOutput(amount);
 	}
 
 	/// <summary>
@@ -7643,6 +7689,49 @@ public class ResourceStatisticsData
 	}
 
 	/// <summary>
+	/// 指定したノード種類×素材の現在の平均排出量を取得（1秒あたり）
+	/// </summary>
+	public float GetNodeAverageOutput(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		return stat?.averageOutput ?? 0f;
+	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の最大平均排出量を取得（1秒あたり）
+	/// </summary>
+	public float GetNodeMaxAverageOutput(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		return stat?.maxAverageOutput ?? 0f;
+	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の累計排出量を取得
+	/// </summary>
+	public long GetNodeTotalOutput(int nodeId, int resourceId)
+	{
+		var stat = nodeStatistics.Find(s => s.nodeId == nodeId && s.resourceId == resourceId);
+		return stat?.totalOutput ?? 0;
+	}
+
+	/// <summary>
+	/// 指定したノード種類が生産している全素材の統計を取得
+	/// </summary>
+	public List<NodeResourceStatistics> GetStatisticsByNodeId(int nodeId)
+	{
+		return nodeStatistics.FindAll(s => s.nodeId == nodeId);
+	}
+
+	/// <summary>
+	/// 指定した素材を生産している全ノード種類の統計を取得
+	/// </summary>
+	public List<NodeResourceStatistics> GetStatisticsByResourceId(int resourceId)
+	{
+		return nodeStatistics.FindAll(s => s.resourceId == resourceId);
+	}
+
+	/// <summary>
 	/// すべての素材の統計をリセット（最大値は保持）
 	/// </summary>
 	public void ResetAll()
@@ -7651,8 +7740,13 @@ public class ResourceStatisticsData
 		{
 			stat.Reset();
 		}
+		foreach (var stat in nodeStatistics)
+		{
+			stat.Reset();
+		}
 	}
 }
+
 ```
 
 === ResourceTokenView.cs ===
@@ -9405,15 +9499,40 @@ public class UserData : MonoBehaviour
 	{
 		return VisitedChapterSections.Contains($"{chapter}_{section}");
 	}
+	/// <summary>
+	/// 素材の排出を記録（統計更新）— ノード種類別も同時に記録
+	/// </summary>
+	public void RecordResourceOutput(int resourceId, int amount, int nodeId)
+	{
+		ResourceStatistics.RecordOutput(resourceId, amount, nodeId);
+		Debug.Log($"[UserData] Recorded output: NodeID={nodeId}, ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}, NodeAvgOutput={ResourceStatistics.GetNodeAverageOutput(nodeId, resourceId):F2}");
+	}
 
 	/// <summary>
-	/// 素材の排出を記録（統計更新）
+	/// 素材の排出を記録（統計更新）— 後方互換用（nodeId不明の場合）
 	/// </summary>
 	public void RecordResourceOutput(int resourceId, int amount)
 	{
 		ResourceStatistics.RecordOutput(resourceId, amount);
-		Debug.Log($"[UserData] Recorded output: ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}, MaxAvgOutput={ResourceStatistics.GetMaxAverageOutput(resourceId):F2}");
+		Debug.Log($"[UserData] Recorded output: ResourceID={resourceId}, Amount={amount}, AvgOutput={ResourceStatistics.GetAverageOutput(resourceId):F2}");
 	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の現在の平均排出量を取得
+	/// </summary>
+	public float GetNodeResourceAverageOutput(int nodeId, int resourceId)
+	{
+		return ResourceStatistics.GetNodeAverageOutput(nodeId, resourceId);
+	}
+
+	/// <summary>
+	/// 指定したノード種類×素材の最大平均排出量を取得
+	/// </summary>
+	public float GetNodeResourceMaxAverageOutput(int nodeId, int resourceId)
+	{
+		return ResourceStatistics.GetNodeMaxAverageOutput(nodeId, resourceId);
+	}
+
 
 	/// <summary>
 	/// 指定した素材の現在の平均排出量を取得

@@ -41,7 +41,7 @@ public class RequestListManager : MonoBehaviour
 				// 依頼の進行状態を作成
 				var progress = UserData.Instance.RequestProgress.GetOrCreateRequest(
 					chapter, section, requestData.DisplayTitle, requestData.Num);
-				progress.state = RequestState.InProgress;
+				progress.SetState(RequestState.InProgress);
 
 				Debug.Log($"[RequestListManager] Received Request: {requestData.DisplayTitle}");
 			}
@@ -112,7 +112,7 @@ public class RequestListManager : MonoBehaviour
 		Debug.Log($"[RequestListManager] Request Accepted: {itemView.RequestData.DisplayTitle}");
 
 		var progress = itemView.RequestProgress;
-		progress.state = RequestState.Accepted;
+		progress.SetState(RequestState.Accepted);
 
 		// 成功特典を適用
 		ApplySuccessEffect(itemView.RequestData);
@@ -135,7 +135,7 @@ public class RequestListManager : MonoBehaviour
 		Debug.Log($"[RequestListManager] Request Rejected: {itemView.RequestData.DisplayTitle}");
 
 		var progress = itemView.RequestProgress;
-		progress.state = RequestState.Accepted; // 拒否でも受諾扱い（失敗ペナルティ適用）
+		progress.SetState(RequestState.Accepted);
 
 		// 失敗ペナルティを適用
 		ApplyFailureEffect(itemView.RequestData);

@@ -721,6 +721,8 @@ public class GraphUIManager : MonoBehaviour
 		// ユーザーデータを復元
 		UserData.Instance.LoadFromSaveData(saveData.userData);
 
+		// ここでRequestItemViewを作り直す必要がある。今はプレハブが残っており、それが持っているRequestItemViewが更新されていない。
+
 		var loadedNodes = new List<NodeView>();
 
 		foreach (var savedNode in saveData.nodes)

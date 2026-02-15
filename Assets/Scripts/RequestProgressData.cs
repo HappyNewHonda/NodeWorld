@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine.InputSystem.LowLevel;
 
 /// <summary>
 /// 依頼の進行状態
@@ -35,7 +37,7 @@ public class RequestProgress
 		this.chapter = chapter;
 		this.section = section;
 		this.title = title;
-		this.state = RequestState.NotReceived;
+		this.SetState(RequestState.NotReceived);
 		this.currentProgress = 0;
 		this.targetProgress = targetProgress;
 	}
@@ -45,28 +47,15 @@ public class RequestProgress
 	/// </summary>
 	public void UpdateProgress(int progress)
 	{
-		currentProgress = progress;
-		AutoUpdateState();
-	}
-
-	/// <summary>
-	/// 進行状況に基づいて状態を自動更新
-	/// </summary>
-	private void AutoUpdateState()
-	{
 		// InProgress中に目標達成したらCompletedに変更
-		if (state == RequestState.InProgress && IsProgressCompleted())
+		if (state == RequestState.InProgress)
 		{
-			state = RequestState.Completed;
+			currentProgress = progress;
+			if (currentProgress >= targetProgress)
+			{
+				SetState(RequestState.Completed);
+			}
 		}
-	}
-
-	/// <summary>
-	/// 進捗が達成されたかチェック
-	/// </summary>
-	public bool IsProgressCompleted()
-	{
-		return currentProgress >= targetProgress;
 	}
 
 	/// <summary>
@@ -74,6 +63,7 @@ public class RequestProgress
 	/// </summary>
 	public void SetState(RequestState newState)
 	{
+		UnityEngine.Debug.Log($"[RequestProgress] chage state {state} -> {newState}");
 		state = newState;
 	}
 }
@@ -84,7 +74,8 @@ public class RequestProgress
 [Serializable]
 public class RequestProgressData
 {
-	public List<RequestProgress> requests = new List<RequestProgress>();
+	[UnityEngine.SerializeField]
+	private List<RequestProgress> requests = new List<RequestProgress>();
 
 	/// <summary>
 	/// 依頼を追加または取得
