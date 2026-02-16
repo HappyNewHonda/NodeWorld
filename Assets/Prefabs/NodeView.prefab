@@ -908,7 +908,7 @@ MonoBehaviour:
   outputPortPrefab: {fileID: 839971847956650356, guid: 5d7da41c7511de84fb8aa29f13279f70, type: 3}
   inputBadgePrefab: {fileID: 7004049856434449120, guid: 4e1f5ad0aee2c034c80c1b4d3f4890a8, type: 3}
   outputBadgePrefab: {fileID: 4508858325983336150, guid: d7708e2cb33d28846bac6fb4eeaaa1fe, type: 3}
-  textBadgePrefab: {fileID: 5586485710718389053, guid: f5a27a9b85c062045babf9a3aaddfb0e, type: 3}
+  textBadgePrefab: {fileID: 5586485710718389053, guid: e0f6fdf96dca1b543beab1a698a3ba18, type: 3}
   inputPortContainer: {fileID: 2845678534986973133}
   outputPortContainer: {fileID: 8199266901877572959}
   badgeContainer: {fileID: 5581776749438787671}

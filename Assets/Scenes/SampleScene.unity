@@ -1581,6 +1581,7 @@ MonoBehaviour:
   nodeLayer: {fileID: 1769645517}
   edgesLayer: {fileID: 1353009931}
   raycaster: {fileID: 824058610}
+  requestListManager: {fileID: 1043204548}
   nodePrefab: {fileID: 4707430455513367226, guid: c85d07b40b2fd304fae3c1da111247d0, type: 3}
   edgePrefab: {fileID: 7778829459165085594, guid: 9e688314281c18649899f67ad96f28a8, type: 3}
 --- !u!1 &832575517
@@ -2109,6 +2110,9 @@ MonoBehaviour:
   CurrentSection: 0
   RequestProgress:
     requests: []
+  ResourceStatistics:
+    statistics: []
+    nodeStatistics: []
 --- !u!1 &1280402330
 GameObject:
   m_ObjectHideFlags: 0

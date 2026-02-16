@@ -1,5 +1,5 @@
 ﻿=== Code Bundle ===
-Generated at: 2026-02-15 11:07:21
+Generated at: 2026-02-16 20:12:06
 Root: C:\Project\NodeWorld\Assets\Scripts
 Extensions: .cs, .json
 Count: 57
@@ -4723,6 +4723,8 @@ public class GraphUIManager : MonoBehaviour
 		// ユーザーデータを復元
 		UserData.Instance.LoadFromSaveData(saveData.userData);
 
+		// ここでRequestItemViewを作り直す必要がある。今はプレハブが残っており、それが持っているRequestItemViewが更新されていない。
+
 		var loadedNodes = new List<NodeView>();
 
 		foreach (var savedNode in saveData.nodes)
@@ -6894,6 +6896,7 @@ public class RequestItemView : MonoBehaviour
 				acceptButton.gameObject.SetActive(true);
 				break;
 			case RequestState.Accepted:
+				gameObject.SetActive(false);
 				break;
 		}
 
@@ -7046,7 +7049,7 @@ public class RequestListManager : MonoBehaviour
 				// 依頼の進行状態を作成
 				var progress = UserData.Instance.RequestProgress.GetOrCreateRequest(
 					chapter, section, requestData.DisplayTitle, requestData.Num);
-				progress.state = RequestState.InProgress;
+				progress.SetState(RequestState.InProgress);
 
 				Debug.Log($"[RequestListManager] Received Request: {requestData.DisplayTitle}");
 			}
@@ -7117,7 +7120,7 @@ public class RequestListManager : MonoBehaviour
 		Debug.Log($"[RequestListManager] Request Accepted: {itemView.RequestData.DisplayTitle}");
 
 		var progress = itemView.RequestProgress;
-		progress.state = RequestState.Accepted;
+		progress.SetState(RequestState.Accepted);
 
 		// 成功特典を適用
 		ApplySuccessEffect(itemView.RequestData);
@@ -7140,7 +7143,7 @@ public class RequestListManager : MonoBehaviour
 		Debug.Log($"[RequestListManager] Request Rejected: {itemView.RequestData.DisplayTitle}");
 
 		var progress = itemView.RequestProgress;
-		progress.state = RequestState.Accepted; // 拒否でも受諾扱い（失敗ペナルティ適用）
+		progress.SetState(RequestState.Accepted);
 
 		// 失敗ペナルティを適用
 		ApplyFailureEffect(itemView.RequestData);
@@ -7251,6 +7254,8 @@ public class RequestListManager : MonoBehaviour
 ```csharp
 using System;
 using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine.InputSystem.LowLevel;
 
 /// <summary>
 /// 依頼の進行状態
@@ -7286,7 +7291,7 @@ public class RequestProgress
 		this.chapter = chapter;
 		this.section = section;
 		this.title = title;
-		this.state = RequestState.NotReceived;
+		this.SetState(RequestState.NotReceived);
 		this.currentProgress = 0;
 		this.targetProgress = targetProgress;
 	}
@@ -7296,28 +7301,15 @@ public class RequestProgress
 	/// </summary>
 	public void UpdateProgress(int progress)
 	{
-		currentProgress = progress;
-		AutoUpdateState();
-	}
-
-	/// <summary>
-	/// 進行状況に基づいて状態を自動更新
-	/// </summary>
-	private void AutoUpdateState()
-	{
 		// InProgress中に目標達成したらCompletedに変更
-		if (state == RequestState.InProgress && IsProgressCompleted())
+		if (state == RequestState.InProgress)
 		{
-			state = RequestState.Completed;
+			currentProgress = progress;
+			if (currentProgress >= targetProgress)
+			{
+				SetState(RequestState.Completed);
+			}
 		}
-	}
-
-	/// <summary>
-	/// 進捗が達成されたかチェック
-	/// </summary>
-	public bool IsProgressCompleted()
-	{
-		return currentProgress >= targetProgress;
 	}
 
 	/// <summary>
@@ -7325,6 +7317,7 @@ public class RequestProgress
 	/// </summary>
 	public void SetState(RequestState newState)
 	{
+		UnityEngine.Debug.Log($"[RequestProgress] chage state {state} -> {newState}");
 		state = newState;
 	}
 }
@@ -7335,7 +7328,8 @@ public class RequestProgress
 [Serializable]
 public class RequestProgressData
 {
-	public List<RequestProgress> requests = new List<RequestProgress>();
+	[UnityEngine.SerializeField]
+	private List<RequestProgress> requests = new List<RequestProgress>();
 
 	/// <summary>
 	/// 依頼を追加または取得

@@ -16,6 +16,7 @@ public class GraphUIManager : MonoBehaviour
 	public RectTransform nodeLayer;      // Nodeをぶら下げる親
 	public RectTransform edgesLayer;     // Edgeをぶら下げる親
 	public GraphicRaycaster raycaster;   // UIヒットテスト用
+	public RequestListManager requestListManager;
 
 	[Header("Prefabs")]
 	public NodeView nodePrefab;          // 下記 NodeView
@@ -800,6 +801,13 @@ public class GraphUIManager : MonoBehaviour
 			Effects.GlobalEffectController.Instance.ApplyGlobalEffectStates(saveData.globalEffectStates);
 		}
 
+		// 依頼UIを現在の章・節に合わせて再構築
+		if (requestListManager != null)
+		{
+			requestListManager.DisplayRequests(
+				UserData.Instance.CurrentChapter,
+				UserData.Instance.CurrentSection);
+		}
 		Debug.Log($"[LoadGraph] Loaded {loadedNodes.Count} nodes, {saveData.edges.Count} edges");
 	}
 
