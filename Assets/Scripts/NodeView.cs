@@ -216,6 +216,12 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	void Update()
 	{
+		// デモ再生中は生産・資源移送を停止
+		if (GameFlowManager.Instance != null && GameFlowManager.Instance.IsProductionPaused)
+		{
+			return;
+		}
+
 		if (isProducing)
 		{
 			UpdateProduction();
@@ -226,6 +232,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		}
 		TryTransferResources();
 	}
+
 
 	void LateUpdate()
 	{

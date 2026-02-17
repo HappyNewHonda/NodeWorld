@@ -1,5 +1,5 @@
 ﻿=== Code Bundle ===
-Generated at: 2026-02-16 20:12:06
+Generated at: 2026-02-17 20:05:16
 Root: C:\Project\NodeWorld\Assets\Scripts
 Extensions: .cs, .json
 Count: 57
@@ -4018,6 +4018,7 @@ public class GraphUIManager : MonoBehaviour
 	public RectTransform nodeLayer;      // Nodeをぶら下げる親
 	public RectTransform edgesLayer;     // Edgeをぶら下げる親
 	public GraphicRaycaster raycaster;   // UIヒットテスト用
+	public RequestListManager requestListManager;
 
 	[Header("Prefabs")]
 	public NodeView nodePrefab;          // 下記 NodeView
@@ -4802,6 +4803,13 @@ public class GraphUIManager : MonoBehaviour
 			Effects.GlobalEffectController.Instance.ApplyGlobalEffectStates(saveData.globalEffectStates);
 		}
 
+		// 依頼UIを現在の章・節に合わせて再構築
+		if (requestListManager != null)
+		{
+			requestListManager.DisplayRequests(
+				UserData.Instance.CurrentChapter,
+				UserData.Instance.CurrentSection);
+		}
 		Debug.Log($"[LoadGraph] Loaded {loadedNodes.Count} nodes, {saveData.edges.Count} edges");
 	}
 
