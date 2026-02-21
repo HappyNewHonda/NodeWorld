@@ -56,7 +56,7 @@ namespace Data.Master
 		/// <summary>
 		/// 生成数
 		/// </summary>
-		public int Count;
+		public int Level;
 
 		/// <summary>
 		/// 生成コスト（0は制作不可）

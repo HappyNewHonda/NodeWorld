@@ -39,6 +39,7 @@ public class SavedNode
 	public bool isProducing;         // 生産中フラグ
 	public int[] activeEffects;      // EffectData.
 	public SavedNodeEffectState[] effectStates;
+	public int investmentAmount;
 }
 
 /// <summary>

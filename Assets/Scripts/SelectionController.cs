@@ -385,6 +385,8 @@ public class SelectionController : MonoBehaviour, IPointerDownHandler, IPointerU
 	private void ShowPurchaseMenu(Vector2 screenPosition)
 	{
 		var items = new List<ContextMenuItem>();
+		bool canAddNode = NodeLimitController.Instance == null || NodeLimitController.Instance.CanAddNode();
+		int remaining = NodeLimitController.Instance != null ? NodeLimitController.Instance.RemainingSlots() : 99;
 
 		// 購入可能なノード（NodeCostDataが存在するもの）を収集
 		var purchasableNodes = new List<(int nodeId, string displayName, int cost)>();
@@ -395,6 +397,7 @@ public class SelectionController : MonoBehaviour, IPointerDownHandler, IPointerU
 				int nodeId = data.Id;
 				var costDataArray = MasterData.Instance.NodeCostDatas.SelectId[nodeId];
 				var costData = costDataArray[0];
+
 				purchasableNodes.Add((nodeId, data.DisplayName, costData.Cost));
 			}
 		}
@@ -403,6 +406,8 @@ public class SelectionController : MonoBehaviour, IPointerDownHandler, IPointerU
 		{
 			string label = $"{nodeInfo.displayName} ($: {nodeInfo.cost})";
 			int capturedNodeId = nodeInfo.nodeId;
+			bool enabled = canAddNode && UserData.Instance.Money >= nodeInfo.cost;
+
 			items.Add(new ContextMenuItem(label, () =>
 			{
 				RectTransformUtility.ScreenPointToLocalPointInRectangle(
@@ -413,11 +418,12 @@ public class SelectionController : MonoBehaviour, IPointerDownHandler, IPointerU
 				{
 					SelectOnly(newNode);
 				}
-			}, enabled: UserData.Instance.Money >= nodeInfo.cost));
+			}, enabled: enabled));
 		}
-		
+
 		items.Add(ContextMenuItem.Separator());
-		items.Add(new ContextMenuItem("ペースト (Ctrl+V)", () => PasteFromClipboard(), enabled: clipboard.Count > 0));
+		items.Add(new ContextMenuItem($"残り配置可能: {remaining}/{NodeLimitController.MAX_NODE_COUNT}", null, enabled: false));
+		items.Add(new ContextMenuItem("ペースト (Ctrl+V)", () => PasteFromClipboard(), enabled: clipboard.Count > 0 && canAddNode));
 
 		if (items.Count == 0)
 		{

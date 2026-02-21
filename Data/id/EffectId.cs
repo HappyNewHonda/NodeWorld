@@ -13,7 +13,8 @@ namespace Define
 		public const int 商業モジュール開放 = 5;
 		public const int 食品加工モジュール開放 = 6;
 		public const int 農業モジュール開放 = 7;
-		public const int テスト = 8;
-		public const int テスト2 = 9;
+		public const int 大規模農業区画 = 8;
+		public const int 工業特化区画 = 9;
+		public const int 巨大商業区画 = 10;
 	}
 }

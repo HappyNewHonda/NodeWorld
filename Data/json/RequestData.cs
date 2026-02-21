@@ -69,6 +69,11 @@ namespace Data.Master
 		public string Description;
 
 		/// <summary>
+		/// AIセリフ
+		/// </summary>
+		public string Message;
+
+		/// <summary>
 		/// 対立する依頼
 		/// </summary>
 		public int ConflictIds;

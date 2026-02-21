@@ -1,13 +1,15 @@
+// === NodeView.cs ===
+using Coffee.UIEffects;
+using Define;
+using Effects;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.UI.Extensions;
-using TMPro;
-using Coffee.UIEffects;
-using Define;
-using Effects;
 
 public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler, IPointerClickHandler
 {
@@ -54,6 +56,10 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 	public Stepper InputStepper;
 	public Stepper OutputStepper;
 
+	[Header("Investment")]
+	public GameObject InvestmentPrefab;
+	public NodeInvestmentController investmentController { get; private set; }
+
 	public RectTransform rt { get; private set; }
 
 	// ノードのメタデータ（複製用）
@@ -63,6 +69,9 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 	private bool dragging;
 	private bool nodeHoverOn;
 	private int pendingHeightAdjustCounter;
+
+	// 投資ブースト: 今回の生産サイクルに適用する倍率
+	private float currentProductionMultiplier = 1f;
 
 	Camera CanvasCam =>
 		(canvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : canvas.worldCamera;
@@ -95,7 +104,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 			for (int i = 0; i < inputTypes.Length; i++)
 			{
 				int requiredAmount = (inputValues != null && i < inputValues.Length) ? inputValues[i] : 1;
-				int maxStock = requiredAmount; // 入力ポートの上限は必要数と同じ
+				int maxStock = requiredAmount;
 				var port = CreatePort(true, inputTypes[i], 0, inputPortContainer, maxStock, requiredAmount);
 				if (port != null) inputPorts.Add(port);
 			}
@@ -108,7 +117,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 			for (int i = 0; i < outputTypes.Length; i++)
 			{
 				int produceAmount = (outputValues != null && i < outputValues.Length) ? outputValues[i] : 1;
-				int maxStock = produceAmount * 10; // 出力ポートの上限は生産量の10倍
+				int maxStock = produceAmount * 10;
 				var port = CreatePort(false, outputTypes[i], 0, outputPortContainer, maxStock, produceAmount);
 				if (port != null) outputPorts.Add(port);
 			}
@@ -123,6 +132,19 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		// 効果適用（ベースは今の値をキャプチャ）
 		nodeEffectController.Setp();
 		nodeEffectController.ApplyAll();
+
+		// レベルアップUI更新
+		var levelUp = GetComponent<NodeLevelUpController>();
+		if (levelUp != null) levelUp.UpdateDisplay();
+
+		// 投資UI更新
+		if(NodeInvestmentController.IsInvestableNode(nodeId))
+		{
+			var parent = GameObject.Find(NodeInvestmentController.InvestmentObjectCreatePath).transform;
+			var obj = Instantiate(InvestmentPrefab, parent);
+			investmentController = obj.GetComponent<NodeInvestmentController>();
+			investmentController.Setup(this);
+		}
 	}
 
 	private void SetResourceBufferButton()
@@ -133,7 +155,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		{
 			if (v > inputPorts.Count)
 			{
-				// 新規入力ポート追加
 				int requiredAmount = inputPorts.Count > 0 ? inputPorts[0].ProduceAmount : 1;
 				int maxStock = inputPorts.Count > 0 ? inputPorts[0].MaxStock : 10;
 				var port = CreatePort(true, ResourceId.全て, 0, inputPortContainer, maxStock, requiredAmount);
@@ -174,7 +195,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		{
 			if (v > outputPorts.Count)
 			{
-				// 新規出力ポート追加
 				int produceAmount = outputPorts.Count > 0 ? outputPorts[0].ProduceAmount : 1;
 				int maxStock = outputPorts.Count > 0 ? outputPorts[0].MaxStock : 10;
 				var port = CreatePort(false, ResourceId.全て, 0, outputPortContainer, maxStock, produceAmount);
@@ -240,7 +260,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		{
 			Canvas.ForceUpdateCanvases();
 
-			// container の PreferredHeight を取得してノード高さへ反映
 			var portRoot = (RectTransform)inputPortContainer.parent;
 			LayoutRebuilder.ForceRebuildLayoutImmediate(portRoot);
 
@@ -282,7 +301,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	private int GetRequiredAmount(PortView inputPort, NodeView targetNode)
 	{
-		// ポートから直接必要数を取得
 		int requiredAmount = inputPort.RequiredAmount;
 		int currentQuantity = inputPort.SharedQuantity;
 		int deficit = requiredAmount - currentQuantity;
@@ -303,7 +321,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 	{
 		if (inputPorts.Count == 0) return true;
 
-		// ポートから直接必要数を取得
 		foreach (var port in inputPorts)
 		{
 			if (port.IsShared) continue;
@@ -317,7 +334,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	private void ConsumeInputs()
 	{
-		// ポートから直接必要数を取得して消費
 		foreach (var port in inputPorts)
 		{
 			if (port.IsShared) continue;
@@ -327,6 +343,13 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	private void StartProduction()
 	{
+		// 投資ブースト：生産開始時にお金を消費し、今サイクルの倍率を確定
+		currentProductionMultiplier = 1f;
+		if (investmentController != null)
+		{
+			currentProductionMultiplier = investmentController.ConsumeInvestmentAndGetMultiplier();
+		}
+
 		if (productionTime > 0)
 		{
 			isProducing = true;
@@ -344,7 +367,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		// 出力ストックが上限に達しているかチェック
 		if (IsOutputStockFull())
 		{
-			// ストック満タン時はゲージを99%で停止
 			productionProgress = Mathf.Min(productionProgress, productionTime * 0.99f);
 			UpdateGauge();
 			return;
@@ -364,7 +386,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	private bool IsOutputStockFull()
 	{
-		// ポートから直接上限を取得
 		foreach (var port in outputPorts)
 		{
 			if (port.IsStockFull() == false)
@@ -377,19 +398,26 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	private void ProduceOutputs()
 	{
-		// ポートから直接生産数と上限を取得
 		foreach (var port in outputPorts)
 		{
-			int produceAmount = port.ProduceAmount;
-			int newQuantity = Mathf.Min(port.Quantity + produceAmount, port.MaxStock);
+			int baseAmount = port.ProduceAmount;
+
+			// 投資ブースト倍率を適用
+			int boostedAmount = Mathf.CeilToInt(baseAmount * currentProductionMultiplier);
+
+			int newQuantity = Mathf.Min(port.Quantity + boostedAmount, port.MaxStock);
 			port.SetQuantity(newQuantity);
 
-			// 素材の排出を記録（統計更新）— ノード種類別も記録
-			if (produceAmount > 0 && !port.IsResourceBuffer)
+			// 素材の排出を記録（統計更新）— ブースト後の量で記録
+			int actualProduced = newQuantity - (port.Quantity - boostedAmount + (newQuantity - port.Quantity - boostedAmount > 0 ? 0 : boostedAmount));
+			if (boostedAmount > 0 && !port.IsResourceBuffer)
 			{
-				UserData.Instance.RecordResourceOutput((int)port.resourceType, produceAmount, nodeId);
+				UserData.Instance.RecordResourceOutput((int)port.resourceType, boostedAmount, nodeId);
 			}
 		}
+
+		// 倍率をリセット
+		currentProductionMultiplier = 1f;
 
 		// 生産完了イベント発火
 		nodeEffectController.OnProductionCompleted();
@@ -398,7 +426,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	public int GetProduceAmount(int resourceId)
 	{
-		// ポートから直接生産数を取得
 		foreach (var port in outputPorts)
 		{
 			if (port.IsResourceBuffer)
@@ -425,9 +452,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		productionTime = Mathf.Max(0.1f, time);
 	}
 
-	/// <summary>
-	/// ポートを生成（上限値と必要数/生産数を設定）
-	/// </summary>
 	private PortView CreatePort(bool isInput, int type, int quantity, RectTransform container, int maxStock, int requiredOrProduceAmount)
 	{
 		var obj = Instantiate(isInput ? inputPortPrefab : outputPortPrefab, container);
@@ -435,7 +459,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		port.isInput = isInput;
 		port.SetType(type);
 		port.SetQuantity(quantity);
-		port.Initialize(maxStock, requiredOrProduceAmount); // 上限値と必要数/生産数を初期化
+		port.Initialize(maxStock, requiredOrProduceAmount);
 
 		return port;
 	}
@@ -561,35 +585,25 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		}
 	}
 
-	/// <summary>
-	/// クリックイベント（右クリックメニュー用）
-	/// </summary>
 	public void OnPointerClick(PointerEventData eventData)
 	{
-		// 右クリック：コンテキストメニュー表示
 		if (eventData.button == PointerEventData.InputButton.Right)
 		{
 			ShowContextMenu(eventData.position);
 		}
 	}
 
-	/// <summary>
-	/// 右クリックメニューを表示
-	/// </summary>
 	private void ShowContextMenu(Vector2 screenPosition)
 	{
-		// このノードが選択されていない場合、このノードのみを選択
 		if (selection != null && !selection.IsSelected(this))
 		{
 			selection.SelectOnly(this);
 		}
 
-		// 購入可能かどうかをチェック（NodeCostDataが存在するか）
 		bool canPurchase = false;
 		var data = MasterData.Instance.NodeDatas.SelectId[nodeId];
 		if (data.UnlockChapter * 100 + data.UnlockSection <= UserData.Instance.CurrentChapter * 100 + UserData.Instance.CurrentSection)
 		{
-			// TODO: 将来的にはここでコストが足りているかのチェックを実装
 			canPurchase = true;
 		}
 
@@ -606,7 +620,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	public void OnBeginDrag(PointerEventData eventData)
 	{
-		// 左クリック以外は無視
 		if (eventData.button != PointerEventData.InputButton.Left)
 		{
 			return;
@@ -624,7 +637,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	public void OnDrag(PointerEventData eventData)
 	{
-		// 左クリック以外は無視
 		if (eventData.button != PointerEventData.InputButton.Left)
 		{
 			return;
@@ -640,7 +652,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 
 	public void OnEndDrag(PointerEventData eventData)
 	{
-		// 左クリック以外は無視
 		if (eventData.button != PointerEventData.InputButton.Left)
 		{
 			return;
@@ -673,7 +684,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 				{
 					view = Instantiate(textBadgePrefab, badgeContainer);
 				}
-				view.Setup($"入力コスト {(MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum >= 0 ? "+" : "")}{MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum}％",seconds: bucket.durationSecSum);
+				view.Setup($"入力コスト {(MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum >= 0 ? "+" : "")}{MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum}％", seconds: bucket.durationSecSum);
 				break;
 			case EffectLogicalKind.Node_OutputValueChange_Percent:
 				if (view == null)
@@ -732,7 +743,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 				{
 					view = Instantiate(textBadgePrefab, badgeContainer);
 				}
-				view.Setup(bucket.displayName ?? kind.ToString(),seconds: bucket.durationSecSum);
+				view.Setup(bucket.displayName ?? kind.ToString(), seconds: bucket.durationSecSum);
 				break;
 		}
 		if (view != null) typeBadges[typeId] = view;
@@ -743,7 +754,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		int typeId = (int)EffectLogicalKind.Node_RemoveByOutputCount;
 		EffectBadgeView view = null;
 
-		// 既存バッジがあれば使いまわす
 		if (typeBadges.TryGetValue(typeId, out var old) && old != null)
 		{
 			view = old;
@@ -757,7 +767,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		typeBadges[typeId] = view;
 	}
 
-	/// <summary>特定タイプのバッジに残り時間を反映（非表示条件なら timeLabel を隠す）</summary>
 	public void UpdateBadgeTime(int typeId, float seconds)
 	{
 		if (typeBadges.TryGetValue(typeId, out var view) && view != null)
@@ -794,7 +803,6 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		resetLayout();
 	}
 
-	// EffectTypeBucket の並びをそのまま UI に反映（全差し替え）
 	public void SetBadges(IEnumerable<Effects.EffectTypeBucket> buckets)
 	{
 		ClearAllBadges();
@@ -811,7 +819,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		if (typeBadges.TryGetValue(typeId, out var old) && old != null)
 		{
 			var port = old.gameObject.GetComponentInChildren<PortView>();
-			if(port)
+			if (port)
 			{
 				port.RemoveEdgeAll();
 				if (inputPorts.Contains(port))

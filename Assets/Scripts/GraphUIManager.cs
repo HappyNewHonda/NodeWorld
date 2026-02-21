@@ -470,6 +470,13 @@ public class GraphUIManager : MonoBehaviour
 	/// </summary>
 	public NodeView CreateNodeFromData(int nodeId, int level, Vector2 position)
 	{
+		// ノード上限チェック
+		if (NodeLimitController.Instance != null && !NodeLimitController.Instance.CanAddNode())
+		{
+			Debug.LogWarning($"[CreateNodeFromData] Node limit reached ({NodeLimitController.MAX_NODE_COUNT}). Cannot create more nodes.");
+			return null;
+		}
+
 		// NodeDataを取得
 		var nodeData = MasterData.Instance.NodeDatas.SelectId[nodeId];
 
@@ -554,6 +561,13 @@ public class GraphUIManager : MonoBehaviour
 	/// </summary>
 	public NodeView CreateNodeFromDataWithCostCheck(int nodeId, int level, Vector2 position)
 	{
+		// ノード上限チェック
+		if (NodeLimitController.Instance != null && !NodeLimitController.Instance.CanAddNode())
+		{
+			Debug.LogWarning($"[CreateNodeFromDataWithCostCheck] Node limit reached ({NodeLimitController.MAX_NODE_COUNT}).");
+			return null;
+		}
+
 		// NodeDataを取得して解放されているかチェック
 		var data = MasterData.Instance.NodeDatas.SelectId[nodeId];
 		if (data.UnlockChapter * 100 + data.UnlockSection <= UserData.Instance.CurrentChapter * 100 + UserData.Instance.CurrentSection)
@@ -613,13 +627,20 @@ public class GraphUIManager : MonoBehaviour
 				isProducing = false
 			};
 
+			// 投資額を保存
+			if (node.investmentController != null)
+			{
+				savedNode.investmentAmount = node.investmentController.InvestmentAmount;
+			}
+
+			// inputの資源を保存
 			savedNode.inputQuantities = new int[node.inputPorts.Count];
 			for (int i = 0; i < node.inputPorts.Count; i++)
 			{
 				var port = node.inputPorts[i];
 				int baseQuantity = port.Quantity;
 
-				// このポート宛の移動中トークン量を加算
+				// このポート宛の移動中トークンが消えないようにInputに加算
 				if (tokensInTransit.TryGetValue(port, out int transitAmount))
 				{
 					baseQuantity += transitAmount;
@@ -627,7 +648,7 @@ public class GraphUIManager : MonoBehaviour
 
 				savedNode.inputQuantities[i] = baseQuantity;
 			}
-
+			// outputの資源を保存
 			savedNode.outputQuantities = new int[node.outputPorts.Count];
 			for (int i = 0; i < node.outputPorts.Count; i++)
 			{
@@ -733,11 +754,20 @@ public class GraphUIManager : MonoBehaviour
 
 			if (node != null)
 			{
+				// 投資額を復元
+				if (savedNode.investmentAmount > 0)
+				{
+					if (node.investmentController != null)
+					{
+						node.investmentController.SetInvestmentAmount(savedNode.investmentAmount);
+					}
+				}
+
+				// input/outputの資源量を復元
 				for (int i = 0; i < savedNode.inputQuantities.Length && i < node.inputPorts.Count; i++)
 				{
 					node.inputPorts[i].SetQuantity(savedNode.inputQuantities[i]);
 				}
-
 				for (int i = 0; i < savedNode.outputQuantities.Length && i < node.outputPorts.Count; i++)
 				{
 					node.outputPorts[i].SetQuantity(savedNode.outputQuantities[i]);
