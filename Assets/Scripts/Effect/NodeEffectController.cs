@@ -461,7 +461,7 @@ public class NodeEffectController : MonoBehaviour
 	// 入力％補正：RequiredAmount を％で再計算（ALL と個別の合算）
 	private void ReapplyInputPercent(int typeId, EffectTypeBucket gb, EffectTypeBucket lb)
 	{
-		int Sign() => MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation;
+		int Sign() => MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation;
 
 		// 対象判定（このノードの入力ポートの rid に対し、ALL or rid が対象なら適用）
 		bool Affects(int rid)
@@ -508,7 +508,7 @@ public class NodeEffectController : MonoBehaviour
 	// 追加入力（個数）：RequiredAmount に「平加」する（ALL + rid）
 	private void ReapplyAddInputFlat(int typeId, EffectTypeBucket gb, EffectTypeBucket lb)
 	{
-		int Sign() => MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation;
+		int Sign() => MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation;
 
 		// このタイプは Sign は関係なく「値を加算」
 		bool Affects(int rid)
@@ -551,7 +551,7 @@ public class NodeEffectController : MonoBehaviour
 	// 出力％補正：ProduceAmount を％で再計算（ALL + rid）
 	private void ReapplyOutputPercent(int typeId, EffectTypeBucket gb, EffectTypeBucket lb)
 	{
-		int Sign() => MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation;
+		int Sign() => MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation;
 
 		bool Affects(int rid)
 		{
@@ -655,7 +655,7 @@ public class NodeEffectController : MonoBehaviour
 		foreach (var b in buckets)
 		{
 			var kind = (EffectLogicalKind)b.typeId;
-			var sign = MasterData.Instance.EffectTypeDatas.SelectTypeid[b.typeId].Evaluation; // -1/0/+1
+			var sign = MasterData.Instance.EffectTypeDatas.SelectTypeId[b.typeId].Evaluation; // -1/0/+1
 			int signedValue = sign * b.valueSum;
 
 			switch (kind)

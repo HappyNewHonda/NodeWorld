@@ -97,7 +97,7 @@ public class MasterData : MonoBehaviour
 		if (RequestDataJson != null)
 		{
 			RequestDatas = JsonUtility.FromJson<RequestDatas>(RequestDataJson.text);
-		}	
+		}
 
 		if (RequestClientDataJson != null)
 		{

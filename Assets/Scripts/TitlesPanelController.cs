@@ -82,7 +82,7 @@ public class TitlesPanelController : MonoBehaviour
 	{
 		var typeId = bucket.typeId;
 		string text = string.IsNullOrEmpty(bucket.displayName)
-			? MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Description
+			? MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Description
 			: bucket.displayName;
 
 		float sec = GlobalEffectController.Instance.GetMaxRemainingSecondsForType(typeId);

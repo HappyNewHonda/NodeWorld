@@ -234,7 +234,7 @@ namespace Effects
 			{
 				if (!includeViewTypeEternal) continue;
 
-				var t = MasterData.Instance.EffectTypeDatas.SelectTypeid[e.Type];
+				var t = MasterData.Instance.EffectTypeDatas.SelectTypeId[e.Type];
 				//if (t.ViewType == 100)
 				{
 					yield return e;

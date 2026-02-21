@@ -42,7 +42,7 @@ namespace Effects
 			// “永続”(称号)扱いは ViewType==100 を採用
 			if (!isPermanent)
 			{
-				var t = MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId];
+				var t = MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId];
 				isPermanent = (t.ViewType == 100);
 			}
 		}

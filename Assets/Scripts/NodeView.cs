@@ -684,14 +684,14 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 				{
 					view = Instantiate(textBadgePrefab, badgeContainer);
 				}
-				view.Setup($"入力コスト {(MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum >= 0 ? "+" : "")}{MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum}％", seconds: bucket.durationSecSum);
+				view.Setup($"入力コスト {(MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation * bucket.valueSum >= 0 ? "+" : "")}{MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation * bucket.valueSum}％", seconds: bucket.durationSecSum);
 				break;
 			case EffectLogicalKind.Node_OutputValueChange_Percent:
 				if (view == null)
 				{
 					view = Instantiate(textBadgePrefab, badgeContainer);
 				}
-				view.Setup($"出力 {(MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum >= 0 ? "+" : "")}{MasterData.Instance.EffectTypeDatas.SelectTypeid[typeId].Evaluation * bucket.valueSum}％", seconds: bucket.durationSecSum);
+				view.Setup($"出力 {(MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation * bucket.valueSum >= 0 ? "+" : "")}{MasterData.Instance.EffectTypeDatas.SelectTypeId[typeId].Evaluation * bucket.valueSum}％", seconds: bucket.durationSecSum);
 				break;
 			case EffectLogicalKind.Node_AddInputResource:
 				if (view == null)

@@ -132,7 +132,7 @@ public class RequestItemView : MonoBehaviour
 		if (requestData.SuccesedEffect > EffectId.なし)
 		{
 			var effect = master.EffectDatas.SelectId[requestData.SuccesedEffect];
-			var effectType = master.EffectTypeDatas.SelectTypeid[effect.Type];
+			var effectType = master.EffectTypeDatas.SelectTypeId[effect.Type];
 
 			var target = "";
 			foreach (var node in effect.TargetNodes)
@@ -158,7 +158,7 @@ public class RequestItemView : MonoBehaviour
 		if (requestData.FailedEffect > EffectId.なし)
 		{
 			var effect = master.EffectDatas.SelectId[requestData.FailedEffect];
-			var effectType = master.EffectTypeDatas.SelectTypeid[effect.Type];
+			var effectType = master.EffectTypeDatas.SelectTypeId[effect.Type];
 
 			var target = "";
 			foreach (var node in effect.TargetNodes)
