@@ -124,6 +124,9 @@ public class NodeInvestmentController : MonoBehaviour
 
 		// -ボタン：0以下なら無効化
 		minusButton.interactable = investmentAmount > 0;
+
+		// ポートの出力表示を更新
+		nodeView.ResetInvestment();
 	}
 
     /// <summary>
@@ -135,20 +138,31 @@ public class NodeInvestmentController : MonoBehaviour
     {
         if (investmentAmount <= 0) return 1f;
 
-        // 実際に払える額を計算
-        int canPay = Mathf.Min(investmentAmount, UserData.Instance.Money);
-        if (canPay <= 0) return 1f;
+		// 実際に払えない場合は倍率を１で返す
+        if (investmentAmount > UserData.Instance.Money)
+		{
+			if (investmentAmount <= 0) return 1f;
+		}
 
         // お金を消費
-        UserData.Instance.SpendMoney(canPay);
+        UserData.Instance.SpendMoney(investmentAmount);
 
         // ブースト倍率を計算
-        float multiplier = 1f + (canPay * PERCENT_PER_DOLLAR / 100f);
+        float multiplier = GetMultiplier();
 
-        Debug.Log($"[Investment] Node '{nodeView.titleText.text}' invested ${canPay}, output multiplier: {multiplier:F2}");
+        Debug.Log($"[Investment] Node '{nodeView.titleText.text}' invested ${investmentAmount}, output multiplier: {multiplier:F2}");
 
         return multiplier;
     }
+
+    /// <summary>
+    /// ブースと倍率を取得
+    /// </summary>
+    /// <returns></returns>
+    public float GetMultiplier()
+    {
+        return 1f + (investmentAmount * PERCENT_PER_DOLLAR / 100f);
+	}
 
     /// <summary>
     /// 現在のブースト倍率（表示用、実消費なし）

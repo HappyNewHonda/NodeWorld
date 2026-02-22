@@ -70,8 +70,7 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 	private bool nodeHoverOn;
 	private int pendingHeightAdjustCounter;
 
-	// 投資ブースト: 今回の生産サイクルに適用する倍率
-	private float currentProductionMultiplier = 1f;
+	public float currentProductionMultiplier = 1.0f;
 
 	Camera CanvasCam =>
 		(canvas.renderMode == RenderMode.ScreenSpaceOverlay) ? null : canvas.worldCamera;
@@ -341,13 +340,25 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		}
 	}
 
+	public void ResetInvestment()
+	{
+		if (investmentController != null)
+		{
+			currentProductionMultiplier = investmentController.GetMultiplier();
+			foreach (var port in outputPorts)
+			{
+				port.UpdateResourceNameText();
+			}
+		}
+	}
+
 	private void StartProduction()
 	{
 		// 投資ブースト：生産開始時にお金を消費し、今サイクルの倍率を確定
-		currentProductionMultiplier = 1f;
 		if (investmentController != null)
 		{
-			currentProductionMultiplier = investmentController.ConsumeInvestmentAndGetMultiplier();
+			investmentController.ConsumeInvestmentAndGetMultiplier();
+			ResetInvestment();
 		}
 
 		if (productionTime > 0)
@@ -402,22 +413,16 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 		{
 			int baseAmount = port.ProduceAmount;
 
-			// 投資ブースト倍率を適用
-			int boostedAmount = Mathf.CeilToInt(baseAmount * currentProductionMultiplier);
-
-			int newQuantity = Mathf.Min(port.Quantity + boostedAmount, port.MaxStock);
+			int newQuantity = Mathf.Min(port.Quantity + baseAmount, port.MaxStock);
 			port.SetQuantity(newQuantity);
 
 			// 素材の排出を記録（統計更新）— ブースト後の量で記録
-			int actualProduced = newQuantity - (port.Quantity - boostedAmount + (newQuantity - port.Quantity - boostedAmount > 0 ? 0 : boostedAmount));
-			if (boostedAmount > 0 && !port.IsResourceBuffer)
+			int actualProduced = newQuantity - (port.Quantity - baseAmount + (newQuantity - port.Quantity - baseAmount > 0 ? 0 : baseAmount));
+			if (baseAmount > 0 && !port.IsResourceBuffer)
 			{
-				UserData.Instance.RecordResourceOutput((int)port.resourceType, boostedAmount, nodeId);
+				UserData.Instance.RecordResourceOutput((int)port.resourceType, baseAmount, nodeId);
 			}
 		}
-
-		// 倍率をリセット
-		currentProductionMultiplier = 1f;
 
 		// 生産完了イベント発火
 		nodeEffectController.OnProductionCompleted();

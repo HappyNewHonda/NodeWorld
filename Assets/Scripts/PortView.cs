@@ -14,6 +14,8 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 {
 	public bool isInput;
 	public int resourceType { get; private set; } = ResourceId.全て;
+
+	// 所持数
 	private int quantity;
 	public int Quantity
 	{
@@ -22,16 +24,17 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 			return quantity;
 		}
 	}
-	// ポートごとの上限・必要数・生産数
+	// ポートごとの上限
 	private int maxStock = 1;
 	public int MaxStock
 	{
 		get
 		{
-			return maxStock;
+			return Mathf.FloorToInt(parentNode.currentProductionMultiplier * maxStock);
 		}
 	}
-	private int requiredAmount = 1;  // 入力ポート用：必要素材数
+	// 必要数
+	private int requiredAmount = 1;
 	public int RequiredAmount
 	{
 		get
@@ -39,12 +42,13 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 			return requiredAmount;
 		}
 	}
-	private int produceAmount = 1;   // 出力ポート用：生産数
+	// 生産量
+	private int produceAmount = 1;
 	public int ProduceAmount
 	{
 		get
 		{
-			return produceAmount;
+			return Mathf.FloorToInt(parentNode.currentProductionMultiplier * produceAmount);
 		}
 	}
 
@@ -61,6 +65,7 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 
 	RectTransform rt;
 	Image img;
+	NodeView parentNode;
 	bool? isResourceBuffer = null;
 	public bool IsResourceBuffer { get { return isResourceBuffer.Value; } }
 
@@ -77,6 +82,7 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 	{
 		rt = GetComponent<RectTransform>();
 		img = GetComponent<Image>();
+		parentNode = GetComponentInParent<NodeView>();
 	}
 
 	void Start()
@@ -86,7 +92,7 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 
 	public NodeView GetParentNode()
 	{
-		return GetComponentInParent<NodeView>();
+		return parentNode;
 	}
 
 	/// <summary>
@@ -293,14 +299,14 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 		else
 		{
 			// 出力ポート: [ストック数/上限] ストック満タンなら赤表示
-			bool isStockFull = quantity >= maxStock;
+			bool isStockFull = quantity >= MaxStock;
 			if (isStockFull)
 			{
-				resourceNameText.text = $"{name} [<color=red>{quantity}</color>/{produceAmount}]";
+				resourceNameText.text = $"{name} [<color=red>{quantity}</color>/{ProduceAmount}]";
 			}
 			else
 			{
-				resourceNameText.text = $"{name} [{quantity}/{produceAmount}]";
+				resourceNameText.text = $"{name} [{quantity}/{ProduceAmount}]";
 			}
 		}
 	}
@@ -310,7 +316,7 @@ public class PortView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDrag
 	/// </summary>
 	public bool IsStockFull()
 	{
-		return quantity >= maxStock;
+		return quantity >= MaxStock;
 	}
 
 	private void SetIconByResourceType(int type)
