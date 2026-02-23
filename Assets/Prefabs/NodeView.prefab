@@ -1181,6 +1181,7 @@ MonoBehaviour:
   InputStepper: {fileID: 4037771860028329054}
   OutputStepper: {fileID: 7625933853276285742}
   InvestmentPrefab: {fileID: 7002349176951742177, guid: 2bd25f37512f781459e248b4ed5e24a1, type: 3}
+  currentProductionMultiplier: 1
 --- !u!114 &276703468737585416
 MonoBehaviour:
   m_ObjectHideFlags: 0

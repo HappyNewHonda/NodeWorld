@@ -1927,6 +1927,9 @@ MonoBehaviour:
   graphUIManager: {fileID: 824058614}
   defaultStepInterval: 0.6
   defaultPostDelay: 0.5
+  prefabBasePath: Prefabs/Demo/
+  messageContainer: {fileID: 0}
+  messagePrefab: {fileID: 0}
 --- !u!4 &983022767
 Transform:
   m_ObjectHideFlags: 0
@@ -2196,6 +2199,7 @@ MonoBehaviour:
   RequestTypeDataJson: {fileID: 4900000, guid: bc24249bec8ffee469291ef8539b9d68, type: 3}
   RequestClientDataJson: {fileID: 4900000, guid: e136bf209b481874c8369307302fd82b, type: 3}
   ChapterDataJson: {fileID: 4900000, guid: 3b8a89a4730987d45b2dabed5c134739, type: 3}
+  DemoDataJson: {fileID: 4900000, guid: 52e2615697ec146489fe93c254b5711f, type: 3}
 --- !u!4 &1162747454
 Transform:
   m_ObjectHideFlags: 0
