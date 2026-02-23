@@ -592,6 +592,25 @@ public class GraphUIManager : MonoBehaviour
 	}
 
 	/// <summary>
+	///  指定のノードIDからNodeViewを取得
+	/// </summary>
+	/// <param name="nodeId"></param>
+	/// <returns></returns>
+	public List<NodeView> GetNodesById(int nodeId)
+	{
+		var nodes = new List<NodeView>();
+		foreach (Transform t in nodeLayer)
+		{
+			var node = t.GetComponent<NodeView>();
+			if (node != null && node.nodeId == nodeId)
+			{
+				nodes.Add(node);
+			}
+		}
+		return nodes;
+	}
+
+	/// <summary>
 	/// 現在のグラフをセーブデータに変換
 	/// </summary>
 	public GraphSaveData SaveGraph()

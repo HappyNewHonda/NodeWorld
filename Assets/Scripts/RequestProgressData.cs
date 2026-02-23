@@ -45,15 +45,25 @@ public class RequestProgress
 	/// <summary>
 	/// 進捗を更新し、必要に応じて状態を自動更新
 	/// </summary>
-	public void UpdateProgress(int progress)
+	public void UpdateProgress(int progress, bool checkOver)
 	{
 		// InProgress中に目標達成したらCompletedに変更
 		if (state == RequestState.InProgress)
 		{
 			currentProgress = progress;
-			if (currentProgress >= targetProgress)
+			if (checkOver)
 			{
-				SetState(RequestState.Completed);
+				if (currentProgress >= targetProgress)
+				{
+					SetState(RequestState.Completed);
+				}
+			}
+			else
+			{
+				if (currentProgress <= targetProgress)
+				{
+					SetState(RequestState.Completed);
+				}
 			}
 		}
 	}

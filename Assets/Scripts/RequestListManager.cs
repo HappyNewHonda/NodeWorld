@@ -187,7 +187,7 @@ public class RequestListManager : MonoBehaviour
 
 			var beforeProgress = itemView.RequestProgress.currentProgress;
 			var targetNodes = itemView.RequestData.TargetNodes;
-			var progressList = new List<float>();
+			int count = 0;
 			switch (itemView.RequestData.Type)
 			{
 				case 1:
@@ -198,6 +198,18 @@ public class RequestListManager : MonoBehaviour
 				case 3:
 					break;
 				case 4:
+					foreach (var nodeId in itemView.RequestData.TargetNodes)
+					{
+						var nodeList = GraphUIManager.Instance.GetNodesById(nodeId);
+						foreach (var node in nodeList)
+						{
+							if (node.nodeLevel >= itemView.RequestData.Level)
+							{
+								count++;
+							}
+						}
+						itemView.RequestProgress.UpdateProgress(count, false);
+					}
 					break;
 				case 5:
 					break;
@@ -206,23 +218,21 @@ public class RequestListManager : MonoBehaviour
 				case 7:
 					break;
 				case 8:
+					foreach (var nodeId in itemView.RequestData.TargetNodes)
+					{
+						var nodeList = GraphUIManager.Instance.GetNodesById(nodeId);
+						itemView.RequestProgress.UpdateProgress(nodeList.Count, true);
+					}
 					break;
 				case 9:
 					foreach (var nodeId in itemView.RequestData.TargetNodes)
 					{
 						foreach (var statistic in UserData.Instance.ResourceStatistics.GetStatisticsByNodeId(nodeId))
 						{
-							progressList.Add(Mathf.Min(1, statistic.maxAverageOutput / itemView.RequestData.Num));
+							count += (int)statistic.maxAverageOutput;
 						}
 					}
-					if (progressList.Count > 0)
-					{
-						itemView.RequestProgress.UpdateProgress((int)(progressList.Average() * 100));
-					}
-					else
-					{
-						itemView.RequestProgress.UpdateProgress(0);
-					}
+					itemView.RequestProgress.UpdateProgress(count, true);
 					break;
 				case 10:
 					break;

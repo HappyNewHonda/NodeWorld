@@ -74,7 +74,7 @@ public class NodeResourceStatistics
 				totalInWindow += value;
 			}
 
-			averageOutput = (float)totalInWindow / secondlyOutput.Count;
+			averageOutput = (float)totalInWindow;
 
 			if (averageOutput > maxAverageOutput)
 			{
