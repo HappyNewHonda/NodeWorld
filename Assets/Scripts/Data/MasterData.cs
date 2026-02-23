@@ -51,6 +51,12 @@ public class MasterData : MonoBehaviour
 	public ChapterDatas ChapterDatas { get; private set; }
 	[SerializeField]
 	private TextAsset ChapterDataJson;
+	/// <summary>
+	/// デモデータ
+	/// </summary>
+	public DemoDatas DemoDatas { get; private set; }
+	[SerializeField]
+	private TextAsset DemoDataJson;
 
 	public static MasterData Instance { get; private set; }
 
@@ -112,6 +118,11 @@ public class MasterData : MonoBehaviour
 		if (ChapterDataJson != null)
 		{
 			ChapterDatas = JsonUtility.FromJson<ChapterDatas>(ChapterDataJson.text);
+		}
+
+		if (DemoDataJson != null)
+		{
+			DemoDatas = JsonUtility.FromJson<DemoDatas>(DemoDataJson.text);
 		}
 	}
 }

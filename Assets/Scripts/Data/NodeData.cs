@@ -68,6 +68,11 @@ namespace Data.Master
 		/// </summary>
 		public int UnlockSection;
 
+		/// <summary>
+		/// モジュールか
+		/// </summary>
+		public bool IsModule;
+
 
 		public NodeData Clone()
 		{

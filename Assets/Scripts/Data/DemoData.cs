@@ -9,22 +9,22 @@ using UnityEngine;
 namespace Data.Master
 {
 	/// <summary>
-	/// ノードデータ
+	/// デモデータ
 	/// </summary>
 	[Serializable]
-	public partial class NodeDatas : ISerializationCallbackReceiver
+	public partial class DemoDatas : ISerializationCallbackReceiver
 	{
 		/// <summary>
-		/// NodeData の配列データ。
+		/// DemoData の配列データ。
 		/// </summary>
-		public NodeData[] data;
+		public DemoData[] data;
 
 
 		/// <summary>
-		/// アクセスユーティリティ: SelectId（キーで NodeData を引けます）。
+		/// アクセスユーティリティ: SelectId（キーで DemoData[] を引けます）。
 		/// </summary>
 
-		public Dictionary<int, NodeData> SelectId { get; private set; }
+		public Dictionary<int, DemoData[]> SelectId { get; private set; }
 
 
 
@@ -35,17 +35,17 @@ namespace Data.Master
 		public void OnAfterDeserialize()
 		{
 
-			SelectId = data.Select(x => x.Id).Distinct().ToDictionary(key => key, val => data.First(x => x.Id == val));
+			SelectId = data.Select(x => x.Id).Distinct().ToDictionary(key => key, val => data.Where(x => x.Id == val).ToArray());
 
 		}
 
 	}
 
 	/// <summary>
-	/// ノードのデータモデル
+	/// デモのデータモデル
 	/// </summary>
 	[Serializable]
-	public partial class NodeData
+	public partial class DemoData
 	{
 
 		/// <summary>
@@ -56,27 +56,22 @@ namespace Data.Master
 		/// <summary>
 		/// 名前
 		/// </summary>
-		public string DisplayName;
+		public string Type;
 
 		/// <summary>
-		/// 解放する章
+		/// 名前
 		/// </summary>
-		public int UnlockChapter;
+		public string Parameter;
 
 		/// <summary>
-		/// 解放する節
+		/// 位置（x,y:座標、z:管理ID）
 		/// </summary>
-		public int UnlockSection;
-
-		/// <summary>
-		/// モジュールか
-		/// </summary>
-		public bool IsModule;
+		public Vector3 Postion;
 
 
-		public NodeData Clone()
+		public DemoData Clone()
 		{
-			return (NodeData) MemberwiseClone();
+			return (DemoData) MemberwiseClone();
 		}
 	}
 
