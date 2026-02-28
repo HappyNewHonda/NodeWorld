@@ -212,6 +212,18 @@ public class RequestListManager : MonoBehaviour
 					}
 					break;
 				case 5:
+					foreach (var nodeId in itemView.RequestData.TargetNodes)
+					{
+						var nodeList = GraphUIManager.Instance.GetNodes();
+						foreach (var node in nodeList)
+						{
+							if (node.nodeLevel >= itemView.RequestData.Level)
+							{
+								count++;
+							}
+						}
+						itemView.RequestProgress.UpdateProgress(count, false);
+					}
 					break;
 				case 6:
 					break;

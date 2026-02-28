@@ -596,6 +596,25 @@ public class GraphUIManager : MonoBehaviour
 	/// </summary>
 	/// <param name="nodeId"></param>
 	/// <returns></returns>
+	public List<NodeView> GetNodes()
+	{
+		var nodes = new List<NodeView>();
+		foreach (Transform t in nodeLayer)
+		{
+			var node = t.GetComponent<NodeView>();
+			if (node != null)
+			{
+				nodes.Add(node);
+			}
+		}
+		return nodes;
+	}
+
+	/// <summary>
+	///  指定のノードIDからNodeViewを取得
+	/// </summary>
+	/// <param name="nodeId"></param>
+	/// <returns></returns>
 	public List<NodeView> GetNodesById(int nodeId)
 	{
 		var nodes = new List<NodeView>();
