@@ -12,7 +12,7 @@ public enum RequestState
 	NotReceived,    // 未受領
 	InProgress,     // 進行中
 	Completed,      // 達成済み
-	Accepted        // 受諾済み（報酬受取済み）
+	Cleared         // 報酬受取済み
 }
 
 /// <summary>
@@ -73,7 +73,7 @@ public class RequestProgress
 	/// </summary>
 	public void SetState(RequestState newState)
 	{
-		UnityEngine.Debug.Log($"[RequestProgress] chage state {state} -> {newState}");
+		UnityEngine.Debug.Log($"[RequestProgress] chage state {state} -> {newState} : {chapter}, {section}, {title}");
 		state = newState;
 	}
 }
@@ -104,11 +104,11 @@ public class RequestProgressData
 	/// <summary>
 	/// すべての依頼が受諾済みかチェック（依頼が0件の場合もtrueを返す）
 	/// </summary>
-	public bool AreAllRequestsAccepted(int chapter, int section)
+	public bool AreAllRequestsCleared(int chapter, int section)
 	{
 		var chapterRequests = requests.FindAll(r => r.chapter == chapter && r.section == section);
 		// 依頼が0件の場合は自動的に完了とみなす（デモのみのセクション対応）
 		if (chapterRequests.Count == 0) return true;
-		return chapterRequests.TrueForAll(r => r.state == RequestState.Accepted);
+		return chapterRequests.TrueForAll(r => r.state == RequestState.Cleared);
 	}
 }

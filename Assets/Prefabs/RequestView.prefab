@@ -232,7 +232,7 @@ GameObject:
   - component: {fileID: 1761143643217956596}
   - component: {fileID: 9184183217723119471}
   m_Layer: 0
-  m_Name: Accept
+  m_Name: Complete
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1610,8 +1610,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 52.77, y: 0}
-  m_SizeDelta: {x: -52.77, y: -2}
+  m_AnchoredPosition: {x: 110, y: 0}
+  m_SizeDelta: {x: -110, y: -2}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &1953712007115772138
 CanvasRenderer:
@@ -1668,12 +1668,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
-  m_fontSizeBase: 30
+  m_fontSize: 24
+  m_fontSizeBase: 24
   m_fontWeight: 400
-  m_enableAutoSizing: 0
-  m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_enableAutoSizing: 1
+  m_fontSizeMin: 16
+  m_fontSizeMax: 24
   m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
@@ -2061,9 +2061,9 @@ MonoBehaviour:
   failedEffectText: {fileID: 6376497434879308869}
   progressText: {fileID: 7711592546896632814}
   clientFaceImage: {fileID: 1491414068185019112}
-  acceptButton: {fileID: 1761143643217956596}
+  completeButton: {fileID: 1761143643217956596}
   rejectButton: {fileID: 5722261540432227195}
-  selectButton: {fileID: 5635339890778446949}
+  acceptButton: {fileID: 5635339890778446949}
   completedBadge: {fileID: 8389228488878169183}
 --- !u!114 &2312764268409893623
 MonoBehaviour:
@@ -2186,8 +2186,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 52.77, y: 0}
-  m_SizeDelta: {x: -52.77, y: -2}
+  m_AnchoredPosition: {x: 110, y: 0}
+  m_SizeDelta: {x: -110, y: -2}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &812859141913849159
 CanvasRenderer:
@@ -2244,12 +2244,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
-  m_fontSizeBase: 30
+  m_fontSize: 24
+  m_fontSizeBase: 24
   m_fontWeight: 400
-  m_enableAutoSizing: 0
-  m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_enableAutoSizing: 1
+  m_fontSizeMin: 16
+  m_fontSizeMax: 24
   m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
@@ -2992,7 +2992,7 @@ GameObject:
   - component: {fileID: 5635339890778446949}
   - component: {fileID: 1388322303898126791}
   m_Layer: 0
-  m_Name: Select
+  m_Name: Accept
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

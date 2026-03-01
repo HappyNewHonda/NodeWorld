@@ -102,7 +102,7 @@ public class GameFlowManager : MonoBehaviour
 
 		EnableUserInput();
 
-		if (hasDemo && UserData.Instance.RequestProgress.AreAllRequestsAccepted(chapter, section))
+		if (hasDemo && UserData.Instance.RequestProgress.AreAllRequestsCleared(chapter, section))
 		{
 			Debug.Log($"[GameFlowManager] No requests in this section, auto-transitioning to next section");
 			yield return StartCoroutine(TransitionToNextChapter());
@@ -144,7 +144,7 @@ public class GameFlowManager : MonoBehaviour
 		int chapter = UserData.Instance.CurrentChapter;
 		int section = UserData.Instance.CurrentSection;
 
-		if (UserData.Instance.RequestProgress.AreAllRequestsAccepted(chapter, section))
+		if (UserData.Instance.RequestProgress.AreAllRequestsCleared(chapter, section))
 		{
 			StartCoroutine(TransitionToNextChapter());
 		}

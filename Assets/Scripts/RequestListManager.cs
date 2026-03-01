@@ -41,6 +41,14 @@ public class RequestListManager : MonoBehaviour
 				// 依頼の進行状態を作成
 				var progress = UserData.Instance.RequestProgress.GetOrCreateRequest(
 					chapter, section, requestData.DisplayTitle, requestData.Num);
+
+				switch(requestData.Type)
+				{
+					case 8:
+						progress.currentProgress = int.MaxValue;
+						break;
+				}
+
 				progress.SetState(RequestState.InProgress);
 
 				Debug.Log($"[RequestListManager] Received Request: {requestData.DisplayTitle}");
@@ -87,6 +95,7 @@ public class RequestListManager : MonoBehaviour
 			itemView.SetupRequest(data, progress);
 			itemView.SetOnAcceptListener(OnRequestAccepted);
 			itemView.SetOnRejectListener(OnRequestRejected);
+			itemView.SetOnCompleteListener(OnRequestCompleted);
 			requestItems.Add(itemView);
 		}
 	}
@@ -112,10 +121,23 @@ public class RequestListManager : MonoBehaviour
 		Debug.Log($"[RequestListManager] Request Accepted: {itemView.RequestData.DisplayTitle}");
 
 		var progress = itemView.RequestProgress;
-		progress.SetState(RequestState.Accepted);
+		progress.SetState(RequestState.InProgress);
+		// UI更新
+		itemView.UpdateDisplay();
+	}
 
-		// 成功特典を適用
-		ApplySuccessEffect(itemView.RequestData);
+	/// <summary>
+	/// 依頼が拒否された時の処理
+	/// </summary>
+	private void OnRequestRejected(RequestItemView itemView)
+	{
+		Debug.Log($"[RequestListManager] Request Rejected: {itemView.RequestData.DisplayTitle}");
+
+		var progress = itemView.RequestProgress;
+		progress.SetState(RequestState.Cleared);
+
+		// 失敗ペナルティを適用
+		ApplyFailureEffect(itemView.RequestData);
 
 		// UI更新
 		itemView.UpdateDisplay();
@@ -128,17 +150,17 @@ public class RequestListManager : MonoBehaviour
 	}
 
 	/// <summary>
-	/// 依頼が拒否された時の処理
+	/// 依頼が達成された時の処理
 	/// </summary>
-	private void OnRequestRejected(RequestItemView itemView)
+	private void OnRequestCompleted(RequestItemView itemView)
 	{
-		Debug.Log($"[RequestListManager] Request Rejected: {itemView.RequestData.DisplayTitle}");
+		Debug.Log($"[RequestListManager] Request Completed: {itemView.RequestData.DisplayTitle}");
 
 		var progress = itemView.RequestProgress;
-		progress.SetState(RequestState.Accepted);
+		progress.SetState(RequestState.Cleared);
 
-		// 失敗ペナルティを適用
-		ApplyFailureEffect(itemView.RequestData);
+		// 成功特典を適用
+		ApplySuccessEffect(itemView.RequestData);
 
 		// UI更新
 		itemView.UpdateDisplay();
@@ -208,7 +230,7 @@ public class RequestListManager : MonoBehaviour
 								count++;
 							}
 						}
-						itemView.RequestProgress.UpdateProgress(count, false);
+						itemView.RequestProgress.UpdateProgress(count, true);
 					}
 					break;
 				case 5:
@@ -222,7 +244,7 @@ public class RequestListManager : MonoBehaviour
 								count++;
 							}
 						}
-						itemView.RequestProgress.UpdateProgress(count, false);
+						itemView.RequestProgress.UpdateProgress(count, true);
 					}
 					break;
 				case 6:
@@ -233,7 +255,7 @@ public class RequestListManager : MonoBehaviour
 					foreach (var nodeId in itemView.RequestData.TargetNodes)
 					{
 						var nodeList = GraphUIManager.Instance.GetNodesById(nodeId);
-						itemView.RequestProgress.UpdateProgress(nodeList.Count, true);
+						itemView.RequestProgress.UpdateProgress(nodeList.Count, false);
 					}
 					break;
 				case 9:

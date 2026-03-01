@@ -376,12 +376,13 @@ public class NodeView : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, I
 	private void UpdateProduction()
 	{
 		// 出力ストックが上限に達しているかチェック
-		if (IsOutputStockFull())
+		// memo : ストックマックスで生産を止めると平均生産量が減ってしまうためにコメントアウト
+		/*if (IsOutputStockFull())
 		{
 			productionProgress = Mathf.Min(productionProgress, productionTime * 0.99f);
 			UpdateGauge();
 			return;
-		}
+		}*/
 
 		productionProgress += Time.deltaTime;
 		UpdateGauge();

@@ -20,9 +20,9 @@ public class RequestItemView : MonoBehaviour
 	[SerializeField] private TextMeshProUGUI failedEffectText;
 	[SerializeField] private TextMeshProUGUI progressText;
 	[SerializeField] private Image clientFaceImage;
-	[SerializeField] private Button acceptButton;
+	[SerializeField] private Button completeButton;
 	[SerializeField] private Button rejectButton;
-	[SerializeField] private Button selectButton;
+	[SerializeField] private Button acceptButton;
 	[SerializeField] private GameObject completedBadge;
 
 	private RequestData requestData;
@@ -33,6 +33,7 @@ public class RequestItemView : MonoBehaviour
 	public RequestData RequestData => requestData;
 	public RequestProgress RequestProgress => requestProgress;
 
+	private Action<RequestItemView> onCompleteCallback;
 	private Action<RequestItemView> onAcceptCallback;
 	private Action<RequestItemView> onRejectCallback;
 
@@ -83,6 +84,8 @@ public class RequestItemView : MonoBehaviour
 
 		// 成功・失敗効果の表示
 		UpdateEffectDisplay();
+
+		Debug.Log("[RequestProgress] UPdate");
 	}
 
 	/// <summary>
@@ -94,14 +97,14 @@ public class RequestItemView : MonoBehaviour
 		completedBadge.SetActive(requestProgress.state == RequestState.Completed);
 
 		progressText.transform.parent.gameObject.SetActive(false);
-		acceptButton.gameObject.SetActive(false);
+		completeButton.gameObject.SetActive(false);
 		rejectButton.gameObject.SetActive(false);
-		selectButton.gameObject.SetActive(false);
+		acceptButton.gameObject.SetActive(false);
 		completedBadge.SetActive(false);
 		switch (requestProgress.state)
 		{
 			case RequestState.NotReceived:
-				selectButton.gameObject.SetActive(true);
+				acceptButton.gameObject.SetActive(true);
 				rejectButton.gameObject.SetActive(true);
 				break;
 			case RequestState.InProgress:
@@ -109,17 +112,16 @@ public class RequestItemView : MonoBehaviour
 				break;
 			case RequestState.Completed:
 				completedBadge.SetActive(true);
-				acceptButton.gameObject.SetActive(true);
+				completeButton.gameObject.SetActive(true);
 				break;
-			case RequestState.Accepted:
+			case RequestState.Cleared:
 				gameObject.SetActive(false);
 				break;
 		}
 
 		// ボタンの有効/無効切り替え
-		bool canAccept = requestProgress.state == RequestState.Completed;
-		acceptButton.interactable = canAccept;
-		rejectButton.interactable = canAccept;
+		bool canComplete = requestProgress.state == RequestState.Completed;
+		completeButton.interactable = canComplete;
 	}
 
 	/// <summary>
@@ -182,6 +184,19 @@ public class RequestItemView : MonoBehaviour
 	}
 
 	/// <summary>
+	/// Completeボタンのリスナーを設定
+	/// </summary>
+	public void SetOnCompleteListener(Action<RequestItemView> callback)
+	{
+		onCompleteCallback = callback;
+		if (completeButton != null)
+		{
+			completeButton.onClick.RemoveAllListeners();
+			completeButton.onClick.AddListener(OnCompleteClicked);
+		}
+	}
+
+	/// <summary>
 	/// Acceptボタンのリスナーを設定
 	/// </summary>
 	public void SetOnAcceptListener(Action<RequestItemView> callback)
@@ -210,6 +225,11 @@ public class RequestItemView : MonoBehaviour
 	private void OnAcceptClicked()
 	{
 		onAcceptCallback?.Invoke(this);
+	}
+
+	private void OnCompleteClicked()
+	{
+		onCompleteCallback?.Invoke(this);
 	}
 
 	private void OnRejectClicked()
