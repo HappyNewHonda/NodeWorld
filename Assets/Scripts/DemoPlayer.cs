@@ -37,12 +37,10 @@ public class DemoPlayer : MonoBehaviour
 	private readonly Dictionary<int, NodeView> managedNodes = new();
 
 	// 現在表示中のメッセージオブジェクト
-	private GameObject currentMessage;
+	private DemoMessageView currentMessageView;
 
 	// 現在表示中のAIオブジェクト
-	private GameObject currentAI;
-	private TextMeshProUGUI currentAIText;
-	private Image currentAIImage;
+	private DemoAIView currentAIView;
 
 	/// <summary>
 	/// 指定したDemoIdのデモを再生する（コルーチン）。
@@ -172,6 +170,9 @@ public class DemoPlayer : MonoBehaviour
 					new Vector3(data.Postion.x, data.Postion.y, data.Postion.z),
 					data.Parameter);
 
+			case "WaitClick":
+				return StepWaitClick();
+
 			default:
 				Debug.LogWarning($"[DemoPlayer] Unknown demo type: {data.Type}");
 				return null;
@@ -193,7 +194,7 @@ public class DemoPlayer : MonoBehaviour
 			yield break;
 		}
 
-		var obj = Instantiate(prefab);
+		var obj = Instantiate(prefab, transform);
 		obj.name = $"Demo_{prefabName}_{managedId}";
 
 		// UI要素の場合はCanvasの子にする
@@ -229,35 +230,35 @@ public class DemoPlayer : MonoBehaviour
 	private IEnumerator StepShowMessage(string message, Vector2 position, int managedId)
 	{
 		// 既存メッセージがあれば削除
-		if (currentMessage != null)
+		if (currentMessageView != null)
 		{
-			Destroy(currentMessage);
+			Destroy(currentMessageView.gameObject);
+			currentMessageView = null;
 		}
 
 		if (messagePrefab != null && messageContainer != null)
 		{
-			currentMessage = Instantiate(messagePrefab, messageContainer);
-			var rt = currentMessage.GetComponent<RectTransform>();
-			if (rt != null)
-			{
-				rt.anchoredPosition = position;
-			}
+			var obj = Instantiate(messagePrefab, messageContainer);
+			var rt = obj.GetComponent<RectTransform>();
+			rt.anchoredPosition = position;
 
-			var text = currentMessage.GetComponentInChildren<TextMeshProUGUI>();
-			if (text != null)
-			{
-				text.text = message;
-			}
-		}
-		else
-		{
-			// フォールバック：動的生成
-			currentMessage = CreateSimpleMessageUI(message, position);
+			// DemoMessageView があればそちら経由
+			currentMessageView = obj.GetComponent<DemoMessageView>();
+			currentMessageView.SetText(message);
 		}
 
-		RegisterManagedObject(managedId, currentMessage);
+		RegisterManagedObject(managedId, currentMessageView.gameObject);
 		Debug.Log($"[DemoPlayer] ShowMessage: \"{message}\" at {position}");
-		yield break;
+
+		// 画面タップ待ち
+		while (true)
+		{
+			if (Input.GetMouseButtonDown(0))
+			{
+				break;
+			}
+			yield return null;
+		}
 	}
 
 	/// <summary>メッセージを削除</summary>
@@ -267,10 +268,10 @@ public class DemoPlayer : MonoBehaviour
 		{
 			DestroyManagedObject(managedId);
 		}
-		else if (currentMessage != null)
+		else if (currentMessageView != null)
 		{
-			Destroy(currentMessage);
-			currentMessage = null;
+			Destroy(currentMessageView.gameObject);
+			currentMessageView = null;
 		}
 		Debug.Log($"[DemoPlayer] DeleteMessage: managedId={managedId}");
 		yield break;
@@ -288,26 +289,19 @@ public class DemoPlayer : MonoBehaviour
 		}
 
 		// 既存AIがあれば削除
-		if (currentAI != null)
+		if (currentAIView != null)
 		{
-			Destroy(currentAI);
+			Destroy(currentAIView.gameObject);
 		}
 
-		var canvas = graphUIManager.canvas;
-		currentAI = Instantiate(prefab, canvas.transform);
-		currentAI.name = $"Demo_AI_{aiPrefabName}";
+		var obj = Instantiate(prefab, transform);
+		obj.name = $"Demo_AI_{aiPrefabName}";
 
-		var rt = currentAI.GetComponent<RectTransform>();
-		if (rt != null)
-		{
-			rt.anchoredPosition = position;
-		}
+		currentAIView = obj.GetComponent<DemoAIView>();
+		var rt = currentAIView.GetComponent<RectTransform>();
+		rt.anchoredPosition = position;
 
-		// AIのテキストとイメージを取得してキャッシュ
-		currentAIText = currentAI.GetComponentInChildren<TextMeshProUGUI>();
-		currentAIImage = currentAI.GetComponentInChildren<Image>();
-
-		RegisterManagedObject(managedId, currentAI);
+		RegisterManagedObject(managedId, obj);
 		Debug.Log($"[DemoPlayer] ShowAI: {aiPrefabName} at {position}, managedId={managedId}");
 		yield break;
 	}
@@ -320,12 +314,10 @@ public class DemoPlayer : MonoBehaviour
 			DestroyManagedObject(managedId);
 		}
 
-		if (currentAI != null)
+		if (currentAIView != null)
 		{
-			Destroy(currentAI);
-			currentAI = null;
-			currentAIText = null;
-			currentAIImage = null;
+			Destroy(currentAIView.gameObject);
+			currentAIView = null;
 		}
 		Debug.Log($"[DemoPlayer] DeleteAI: managedId={managedId}");
 		yield break;
@@ -334,7 +326,28 @@ public class DemoPlayer : MonoBehaviour
 	/// <summary>AIの画像を変更</summary>
 	private IEnumerator StepChangeAIImage(string imageName, int managedId)
 	{
-		GameObject targetAI = GetManagedObject(managedId) ?? currentAI;
+		// DemoAIView 経由で切り替え（存在すれば）
+		DemoAIView aiView = null;
+
+		var targetObj = GetManagedObject(managedId);
+		if (targetObj != null)
+		{
+			aiView = targetObj.GetComponent<DemoAIView>();
+		}
+		if (aiView == null)
+		{
+			aiView = currentAIView;
+		}
+
+		if (aiView != null)
+		{
+			aiView.SetImage(imageName);
+			Debug.Log($"[DemoPlayer] ChangeAIImage(via DemoAIView): {imageName}, managedId={managedId}");
+			yield break;
+		}
+
+		// フォールバック：従来のロジック
+		GameObject targetAI = targetObj ?? currentAIView.gameObject;
 		if (targetAI == null)
 		{
 			Debug.LogWarning($"[DemoPlayer] ChangeAIImage: AI object not found for managedId={managedId}");
@@ -345,7 +358,6 @@ public class DemoPlayer : MonoBehaviour
 		var sprite = Resources.Load<Sprite>(path);
 		if (sprite == null)
 		{
-			// 別パスも試行
 			sprite = Resources.Load<Sprite>("Sprites/AI/" + imageName);
 		}
 
@@ -369,34 +381,48 @@ public class DemoPlayer : MonoBehaviour
 	/// <summary>AIのテキストを表示</summary>
 	private IEnumerator StepShowAIText(string text, int managedId)
 	{
-		GameObject targetAI = GetManagedObject(managedId) ?? currentAI;
-		if (targetAI == null)
-		{
-			Debug.LogWarning($"[DemoPlayer] ShowAIText: AI object not found for managedId={managedId}");
-			yield break;
-		}
+		DemoAIView aiView = null;
+		var targetObj = GetManagedObject(managedId);
+		if (targetObj != null) aiView = targetObj.GetComponent<DemoAIView>();
+		if (aiView == null) aiView = currentAIView;
 
-		var textComponent = targetAI.GetComponentInChildren<TextMeshProUGUI>();
-		if (textComponent != null)
+		if (aiView != null)
 		{
-			textComponent.text = text;
-			textComponent.gameObject.SetActive(true);
-		}
+			aiView.SetText(text);
+			Debug.Log($"[DemoPlayer] ShowAIText(via DemoAIView): \"{text}\", managedId={managedId}");
 
-		Debug.Log($"[DemoPlayer] ShowAIText: \"{text}\", managedId={managedId}");
-		yield break;
+			// 画面タップ待ち
+			while (true)
+			{
+				if (Input.GetMouseButtonDown(0))
+				{
+					break;
+				}
+				yield return null;
+			}
+		}
+		else
+		{
+			Debug.Log($"[DemoPlayer] ShowAIText: \"{text}\", managedId={managedId}");
+		}
 	}
 
 	/// <summary>AIのテキストを非表示</summary>
 	private IEnumerator StepDeleteAIText(int managedId)
 	{
-		GameObject targetAI = GetManagedObject(managedId) ?? currentAI;
-		if (targetAI == null)
+		DemoAIView aiView = null;
+		var targetObj = GetManagedObject(managedId);
+		if (targetObj != null) aiView = targetObj.GetComponent<DemoAIView>();
+		if (aiView == null) aiView = currentAIView;
+
+		if (aiView != null)
 		{
+			aiView.SetTextVisible(false);
+			Debug.Log($"[DemoPlayer] DeleteAIText(via DemoAIView): managedId={managedId}");
 			yield break;
 		}
 
-		var textComponent = targetAI.GetComponentInChildren<TextMeshProUGUI>();
+		var textComponent = aiView.GetAIText();
 		if (textComponent != null)
 		{
 			textComponent.text = "";
@@ -724,6 +750,20 @@ public class DemoPlayer : MonoBehaviour
 		}
 	}
 
+	/// <summary>画面タップを待つ</summary>
+	private IEnumerator StepWaitClick()
+	{
+		Debug.Log($"[DemoPlayer] WaitClick: Waiting for screen tap...");
+		while (true)
+		{
+			if (Input.GetMouseButtonDown(0))
+			{
+				break;
+			}
+			yield return null;
+		}
+	}
+
 	// =====================================================================
 	// ユーティリティ
 	// =====================================================================
@@ -770,45 +810,6 @@ public class DemoPlayer : MonoBehaviour
 			return ioArray.Min(io => io.Level);
 		}
 		return 1;
-	}
-
-	/// <summary>簡易メッセージUI生成（messagePrefab未設定時のフォールバック）</summary>
-	private GameObject CreateSimpleMessageUI(string message, Vector2 position)
-	{
-		var canvas = graphUIManager.canvas;
-		if (canvas == null) return null;
-
-		var obj = new GameObject("DemoMessage", typeof(RectTransform));
-		obj.transform.SetParent(canvas.transform, false);
-
-		var rt = obj.GetComponent<RectTransform>();
-		rt.anchorMin = new Vector2(0.5f, 0f);
-		rt.anchorMax = new Vector2(0.5f, 0f);
-		rt.pivot = new Vector2(0.5f, 0f);
-		rt.anchoredPosition = position;
-		rt.sizeDelta = new Vector2(800f, 100f);
-
-		// 背景
-		var bgImage = obj.AddComponent<Image>();
-		bgImage.color = new Color(0f, 0f, 0f, 0.8f);
-
-		// テキスト
-		var textObj = new GameObject("Text", typeof(RectTransform));
-		textObj.transform.SetParent(obj.transform, false);
-
-		var textRt = textObj.GetComponent<RectTransform>();
-		textRt.anchorMin = Vector2.zero;
-		textRt.anchorMax = Vector2.one;
-		textRt.offsetMin = new Vector2(20f, 10f);
-		textRt.offsetMax = new Vector2(-20f, -10f);
-
-		var text = textObj.AddComponent<TextMeshProUGUI>();
-		text.text = message;
-		text.fontSize = 24f;
-		text.alignment = TextAlignmentOptions.Center;
-		text.color = Color.white;
-
-		return obj;
 	}
 
 	/// <summary>イージング関数（Cubic InOut）</summary>

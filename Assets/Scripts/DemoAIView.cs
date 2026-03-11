@@ -16,12 +16,9 @@ public class DemoAIView : MonoBehaviour
     [SerializeField] private GameObject textBubble;
     [SerializeField] private TextMeshProUGUI aiText;
 
-    [Header("Sprite Settings")]
-    [Tooltip("Resources 内の AI 画像フォルダパス（末尾スラッシュなし）")]
-    [SerializeField] private string spriteBasePath = "Sprites/AI";
-
-    [Tooltip("代替パス（Prefabs/Demo/AIImages など）")]
-    [SerializeField] private string spriteFallbackPath = "Prefabs/Demo/AIImages";
+    [Header("Sprite")]
+    [Tooltip("AI 画像Sprite")]
+    [SerializeField] private Sprite[] sprites;
 
     // 現在のスプライト名をキャッシュ（同じ画像の再ロードを防ぐ）
     private string currentSpriteName;
@@ -43,22 +40,17 @@ public class DemoAIView : MonoBehaviour
         if (string.IsNullOrEmpty(spriteName)) return;
         if (spriteName == currentSpriteName) return;
 
-        Sprite sprite = Resources.Load<Sprite>($"{spriteBasePath}/{spriteName}");
-        if (sprite == null)
+        foreach(var sprite in sprites)
         {
-            sprite = Resources.Load<Sprite>($"{spriteFallbackPath}/{spriteName}");
-        }
-
-        if (sprite != null)
-        {
-            aiImage.sprite = sprite;
-            currentSpriteName = spriteName;
-        }
-        else
-        {
-            Debug.LogWarning($"[DemoAIView] Sprite not found: '{spriteName}' in '{spriteBasePath}' or '{spriteFallbackPath}'");
-        }
-    }
+            if (sprite != null && sprite.name == spriteName)
+            {
+                aiImage.sprite = sprite;
+                currentSpriteName = spriteName;
+                return;
+            }
+		}
+		Debug.LogWarning($"[DemoAIView] Sprite not found: '{spriteName}'");
+	}
 
     /// <summary>
     /// AI の表情画像を Sprite 直接指定で切り替える。
