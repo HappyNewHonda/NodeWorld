@@ -86,7 +86,8 @@ public class DemoAIView : MonoBehaviour
             aiText.text = text ?? "";
         }
         SetTextVisible(!string.IsNullOrEmpty(text));
-    }
+		LayoutRebuilder.ForceRebuildLayoutImmediate(textBubble.GetComponent<RectTransform>());
+	}
 
     /// <summary>
     /// 現在のテキストを取得する。
